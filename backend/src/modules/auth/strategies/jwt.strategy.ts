@@ -14,11 +14,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       // Extract from cookie named 'jwt'
       jwtFromRequest: ExtractJwt.fromExtractors([
         (req) => {
-            let token = null;
-            if (req && req.cookies) {
-                token = req.cookies['jwt'];
-            }
-            return token;
+          let token = null;
+          if (req && req.cookies) {
+            token = req.cookies['jwt'];
+          }
+          return token;
         },
       ]),
       ignoreExpiration: false,

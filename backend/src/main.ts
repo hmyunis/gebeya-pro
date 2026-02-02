@@ -6,6 +6,7 @@ import {
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import fastifyCookie from '@fastify/cookie';
+import multipart from '@fastify/multipart';
 
 async function bootstrap() {
   // Initialize with Fastify Adapter
@@ -21,8 +22,18 @@ async function bootstrap() {
 
   // Enable CORS (Important for your Dashboard/Frontend)
   app.enableCors({
-    origin: ['https://shop.yourdomain.com', 'http://localhost:4321', 'http://localhost:5173'],
+    origin: [
+      'https://shop.yourdomain.com',
+      'http://localhost:4321',
+      'http://localhost:5173',
+    ],
     credentials: true, // Allow cookies
+  });
+
+  await app.register(multipart, {
+    limits: {
+      fileSize: 5 * 1024 * 1024, // 5MB limit
+    },
   });
 
   // Global Validation Pipe (Protects all endpoints)
@@ -42,7 +53,7 @@ async function bootstrap() {
   // We bind to 0.0.0.0 to ensure external access via the proxy.
   const port = process.env.PORT || 3000;
   await app.listen(port, '0.0.0.0');
-  
+
   console.log(`🚀 Application is running on: ${await app.getUrl()}`);
 }
 bootstrap();

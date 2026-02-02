@@ -2,7 +2,9 @@ import { z } from 'zod';
 
 export const envSchema = z.object({
   // Server
-  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  NODE_ENV: z
+    .enum(['development', 'production', 'test'])
+    .default('development'),
   PORT: z.coerce.number().default(3000),
 
   DB_HOST: z.string(),
@@ -13,9 +15,10 @@ export const envSchema = z.object({
 
   // Security
   JWT_SECRET: z.string().min(10),
-  
+
   // Telegram
   TELEGRAM_BOT_TOKEN: z.string(),
+  TELEGRAM_ADMIN_ID: z.coerce.string(),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

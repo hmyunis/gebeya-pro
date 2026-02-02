@@ -1,4 +1,12 @@
-import { Controller, Post, Body, Res, Get, UseGuards, Req } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Res,
+  Get,
+  UseGuards,
+  Req,
+} from '@nestjs/common';
 import { type FastifyReply } from 'fastify';
 import { AuthService } from './auth.service';
 import { TelegramLoginDto } from './dto/telegram-login.dto';
@@ -13,7 +21,8 @@ export class AuthController {
     @Body() telegramData: TelegramLoginDto,
     @Res({ passthrough: true }) res: FastifyReply,
   ) {
-    const { user, token } = await this.authService.validateAndLogin(telegramData);
+    const { user, token } =
+      await this.authService.validateAndLogin(telegramData);
 
     // Set HttpOnly Cookie
     res.setCookie('jwt', token, {

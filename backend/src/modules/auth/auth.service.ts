@@ -22,7 +22,9 @@ export class AuthService {
 
     // 2. Find or Create User
     // We explicitly cast telegramId to string to match Entity definition
-    let user = await this.userRepository.findOne({ where: { telegramId: data.id.toString() } });
+    let user = await this.userRepository.findOne({
+      where: { telegramId: data.id.toString() },
+    });
 
     if (!user) {
       user = this.userRepository.create({
@@ -53,12 +55,15 @@ export class AuthService {
   }
 
   private verifyTelegramSignature(data: TelegramLoginDto) {
-    const BOT_TOKEN = this.configService.get<string>('TELEGRAM_BOT_TOKEN') || '';
-    
+    const BOT_TOKEN =
+      this.configService.get<string>('TELEGRAM_BOT_TOKEN') || '';
+
     // Check for replay attacks (5 min expiration)
     const now = Math.floor(Date.now() / 1000);
     if (now - data.auth_date > 300) {
-      throw new UnauthorizedException('Login session expired. Please try again.');
+      throw new UnauthorizedException(
+        'Login session expired. Please try again.',
+      );
     }
 
     // Create the Check String

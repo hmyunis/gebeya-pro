@@ -10,7 +10,7 @@ export enum UserRole {
 export class User extends AbstractEntity {
   // Telegram ID is unique and crucial for login
   @Index({ unique: true })
-  @Column({ type: 'bigint' }) 
+  @Column({ type: 'bigint' })
   telegramId: string;
 
   @Column({ nullable: true })

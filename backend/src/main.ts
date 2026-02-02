@@ -23,7 +23,10 @@ async function bootstrap() {
   // Enable CORS (Important for your Dashboard/Frontend)
   app.enableCors({
     origin: [
-      'https://shop.yourdomain.com',
+      'https://admin.mycharitiesfoundation.com',
+      'https://public.mycharitiesfoundation.com',
+      'http://admin.mycharitiesfoundation.com',
+      'http://public.mycharitiesfoundation.com',
       'http://localhost:4321',
       'http://localhost:5173',
     ],

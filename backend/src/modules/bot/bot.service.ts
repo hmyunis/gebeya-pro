@@ -23,13 +23,24 @@ export class BotService {
     }
 
     const itemsList = order.items
-      .map((item) => `- ${item.quantity}x ${item.productName}`)
+      .map((item) => {
+        const formattedPrice = Number(item.price).toLocaleString('en-US', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+        return `- ${item.quantity}x ${item.productName} (${formattedPrice} Birr)`;
+      })
       .join('\n');
+
+    const formattedTotal = Number(order.totalAmount).toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
 
     const message = `
 📦 <b>New Order #${order.id}</b>
 👤 User: ${order.user.firstName} (@${order.user.username || 'N/A'})
-💰 Total: $${Number(order.totalAmount).toFixed(2)}
+💰 Total: ${formattedTotal} Birr
 📍 Address: ${order.shippingAddress}
 
 <i>Items:</i>

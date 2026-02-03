@@ -18,23 +18,39 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
+import { buildPaginationMeta, normalizePagination } from '../../common/pagination';
 
 @Controller('products')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
   @Get()
-  findAll() {
-    return this.productsService.findAll();
+  async findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
+    const { page: safePage, limit: safeLimit } = normalizePagination(page, limit);
+    const { data, total } = await this.productsService.findAllPaginated(
+      safePage,
+      safeLimit,
+    );
+    return { data, meta: buildPaginationMeta(total, safePage, safeLimit) };
   }
 
   @Get('search')
-  async search(@Query('q') query: string) {
+  async search(
+    @Query('q') query: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
     if (!query) {
-      return [];
+      return { data: [], meta: buildPaginationMeta(0, 1, 10) };
     }
 
-    return this.productsService.search(query);
+    const { page: safePage, limit: safeLimit } = normalizePagination(page, limit);
+    const { data, total } = await this.productsService.searchPaginated(
+      query,
+      safePage,
+      safeLimit,
+    );
+    return { data, meta: buildPaginationMeta(total, safePage, safeLimit) };
   }
 
   // Only Admins can create (We'll add Admin Guard later)
@@ -47,7 +63,10 @@ export class ProductsController {
 
     for await (const part of parts) {
       if (part.type === 'file') {
-        imageBuffer = await part.toBuffer();
+        const buffer = await part.toBuffer();
+        if (buffer.length > 0) {
+          imageBuffer = buffer;
+        }
       } else {
         body[part.fieldname] = part.value;
       }
@@ -74,7 +93,10 @@ export class ProductsController {
 
     for await (const part of parts) {
       if (part.type === 'file') {
-        imageBuffer = await part.toBuffer();
+        const buffer = await part.toBuffer();
+        if (buffer.length > 0) {
+          imageBuffer = buffer;
+        }
       } else {
         body[part.fieldname] = part.value;
       }

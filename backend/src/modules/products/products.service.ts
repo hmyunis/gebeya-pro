@@ -45,6 +45,17 @@ export class ProductsService {
     });
   }
 
+  async findAllPaginated(page: number, limit: number) {
+    const [data, total] = await this.productRepo.findAndCount({
+      order: { createdAt: 'DESC' },
+      relations: ['category'],
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    return { data, total };
+  }
+
   async findOne(id: number): Promise<Product> {
     const product = await this.productRepo.findOne({
       where: { id },
@@ -84,15 +95,18 @@ export class ProductsService {
     return this.productRepo.save(product);
   }
 
-  async search(query: string): Promise<Product[]> {
-    return this.productRepo.find({
+  async searchPaginated(query: string, page: number, limit: number) {
+    const [data, total] = await this.productRepo.findAndCount({
       where: [
         { name: Like(`%${query}%`) },
         { description: Like(`%${query}%`) },
       ],
       relations: ['category'],
-      take: 20,
+      skip: (page - 1) * limit,
+      take: limit,
     });
+
+    return { data, total };
   }
 
   async remove(id: number): Promise<void> {

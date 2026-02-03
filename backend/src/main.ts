@@ -7,6 +7,8 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import fastifyCookie from '@fastify/cookie';
 import multipart from '@fastify/multipart';
+import fastifyStatic from '@fastify/static';
+import * as path from 'path';
 
 async function bootstrap() {
   // Initialize with Fastify Adapter
@@ -20,29 +22,48 @@ async function bootstrap() {
     secret: process.env.JWT_SECRET, // Used to sign cookies
   });
 
-  // Enable CORS (Important for your Dashboard/Frontend)
+  const defaultOrigins = [
+    'https://admin.mycharitiesfoundation.com',
+    'https://public.mycharitiesfoundation.com',
+    'http://admin.mycharitiesfoundation.com',
+    'http://public.mycharitiesfoundation.com',
+    'http://localhost:4321',
+    'http://localhost:5173',
+  ];
+  const envOrigins = (process.env.CORS_ORIGINS ?? '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  const allowedOrigins = [...new Set([...defaultOrigins, ...envOrigins])];
+
   app.enableCors({
-    origin: [
-      'https://admin.mycharitiesfoundation.com',
-      'https://public.mycharitiesfoundation.com',
-      'http://admin.mycharitiesfoundation.com',
-      'http://public.mycharitiesfoundation.com',
-      'http://localhost:4321',
-      'http://localhost:5173',
+    origin: allowedOrigins,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: [
+      'Origin',
+      'Content-Type',
+      'Accept',
+      'Authorization',
+      'X-Requested-With',
     ],
-    credentials: true, // Allow cookies
   });
 
   await app.register(multipart, {
     limits: {
-      fileSize: 5 * 1024 * 1024, // 5MB limit
+      fileSize: 25 * 1024 * 1024, // 25MB limit
     },
+  });
+
+  await app.register(fastifyStatic, {
+    root: path.join(process.cwd(), 'uploads'),
+    prefix: '/uploads/',
   });
 
   // Global Validation Pipe (Protects all endpoints)
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true, // Strip properties not in the DTO
+      whitelist: true,
       forbidNonWhitelisted: true, // Throw error if extra properties sent
       transform: true, // Auto-convert types (e.g. string "1" to number 1)
     }),

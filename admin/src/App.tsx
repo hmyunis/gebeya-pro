@@ -3,6 +3,9 @@ import { Providers } from "./providers";
 import LoginPage from "./pages/auth/LoginPage";
 import DashboardLayout from "./layouts/DashboardLayout";
 import DashboardHome from "./pages/dashboard/DashboardHome";
+import ProductsPage from "./pages/products/ProductsPage";
+import OrdersPage from "./pages/orders/OrdersPage";
+import ActivityLogsPage from "./pages/activity/ActivityLogsPage";
 
 function App() {
   return (
@@ -13,7 +16,9 @@ function App() {
         {/* Protected Routes */}
         <Route path="/" element={<DashboardLayout />}>
           <Route index element={<DashboardHome />} />
-          {/* We will add Products/Orders routes here later */}
+          <Route path="products" element={<ProductsPage />} />
+          <Route path="orders" element={<OrdersPage />} />
+          <Route path="activity-logs" element={<ActivityLogsPage />} />
         </Route>
       </Routes>
     </Providers>

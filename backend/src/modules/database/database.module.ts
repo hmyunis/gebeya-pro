@@ -14,10 +14,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
         username: configService.get<string>('DB_USERNAME'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_NAME'),
-        // Automatically load entities from imported modules
         autoLoadEntities: true,
-        // DANGEROUS: Only true in dev. In prod, use migrations.
-        // For this project scope, we will keep it true for simplicity unless you want migrations.
         synchronize: configService.get<string>('NODE_ENV') !== 'production',
       }),
     }),

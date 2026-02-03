@@ -19,6 +19,11 @@ export const envSchema = z.object({
   // Telegram
   TELEGRAM_BOT_TOKEN: z.string(),
   TELEGRAM_ADMIN_ID: z.coerce.string(),
+
+  // CORS / Cookies
+  CORS_ORIGINS: z.string().optional(),
+  COOKIE_SAMESITE: z.enum(['lax', 'strict', 'none']).optional(),
+  COOKIE_SECURE: z.coerce.boolean().optional(),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

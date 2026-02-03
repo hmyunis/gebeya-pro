@@ -14,4 +14,14 @@ export class AuditService {
     const log = this.logRepo.create(data);
     await this.logRepo.save(log);
   }
+
+  async findAllPaginated(page: number, limit: number) {
+    const [data, total] = await this.logRepo.findAndCount({
+      order: { timestamp: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    return { data, total };
+  }
 }

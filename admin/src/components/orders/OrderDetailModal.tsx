@@ -53,6 +53,36 @@ export default function OrderDetailModal({ order, isOpen, onClose }: OrderDetail
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [isDraggingReceipt, setIsDraggingReceipt] = useState(false);
   const receiptInputRef = useRef<HTMLInputElement | null>(null);
+  const [isReceiptPreviewOpen, setIsReceiptPreviewOpen] = useState(false);
+
+  const receiptUrl = order?.receiptUrl ? getImageUrl(order.receiptUrl) : null;
+  const receiptExtension = receiptUrl ? new URL(receiptUrl).pathname.split('.').pop()?.toLowerCase() : null;
+  const isImageReceipt = receiptExtension ? ["png", "jpg", "jpeg", "webp", "gif"].includes(receiptExtension) : false;
+  const isPdfReceipt = receiptExtension === "pdf";
+
+  const downloadReceipt = async () => {
+    if (!receiptUrl) return;
+    try {
+      const response = await fetch(receiptUrl, { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to download receipt");
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const filename = receiptUrl.split("/").pop() || "receipt";
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error: any) {
+      addToast({
+        title: "Download failed",
+        description: error?.message || "Could not download receipt.",
+        color: "danger",
+      });
+    }
+  };
 
   const mutation = useMutation({
     mutationFn: async (newStatus: OrderStatus) => {
@@ -191,14 +221,13 @@ export default function OrderDetailModal({ order, isOpen, onClose }: OrderDetail
               <div className="flex items-center justify-between">
                 <p className="text-xs font-bold uppercase text-default-400">Receipt</p>
                 {order.receiptUrl ? (
-                  <a
-                    href={getImageUrl(order.receiptUrl)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-xs font-semibold text-primary underline underline-offset-4"
+                  <Button
+                    size="sm"
+                    variant="flat"
+                    onPress={() => setIsReceiptPreviewOpen(true)}
                   >
                     View / Download
-                  </a>
+                  </Button>
                 ) : (
                   <span className="text-xs text-default-500">No receipt yet</span>
                 )}
@@ -294,6 +323,50 @@ export default function OrderDetailModal({ order, isOpen, onClose }: OrderDetail
                 )}
               </div>
             </section>
+
+            <Modal
+              isOpen={isReceiptPreviewOpen}
+              onClose={() => setIsReceiptPreviewOpen(false)}
+              size="2xl"
+              scrollBehavior="inside"
+            >
+              <ModalContent>
+                <ModalHeader className="flex flex-col gap-1">Receipt Preview</ModalHeader>
+                <ModalBody>
+                  {receiptUrl ? (
+                    <div className="flex flex-col gap-4">
+                      <div className="rounded-lg border border-default-200 bg-default-50 p-3">
+                        {isImageReceipt ? (
+                          <img
+                            src={receiptUrl}
+                            alt="Receipt"
+                            className="max-h-[70vh] w-full object-contain"
+                          />
+                        ) : isPdfReceipt ? (
+                          <iframe
+                            src={receiptUrl}
+                            title="Receipt PDF"
+                            className="h-[70vh] w-full rounded-md"
+                          />
+                        ) : (
+                          <p className="text-sm text-default-500">
+                            Preview not available for this file type.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ) : null}
+                </ModalBody>
+                <ModalFooter>
+                  <Button variant="light" onPress={() => setIsReceiptPreviewOpen(false)}>
+                    Close
+                  </Button>
+                  <Button color="primary" onPress={downloadReceipt} isDisabled={!receiptUrl}>
+                    Download
+                  </Button>
+                </ModalFooter>
+              </ModalContent>
+            </Modal>
 
             <Divider />
 

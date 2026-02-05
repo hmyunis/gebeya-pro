@@ -13,6 +13,7 @@ import { AdminModule } from './modules/admin/admin.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { ContactModule } from './modules/contact/contact.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { ContactModule } from './modules/contact/contact.module';
         limit: 10,
       },
     ]),
+    ScheduleModule.forRoot(),
 
     TelegrafModule.forRootAsync({
       imports: [ConfigModule],

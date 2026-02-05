@@ -37,7 +37,7 @@ async function bootstrap() {
   const allowedOrigins = [...new Set([...defaultOrigins, ...envOrigins])];
 
   app.enableCors({
-    origin: allowedOrigins,
+    origin: true,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: [

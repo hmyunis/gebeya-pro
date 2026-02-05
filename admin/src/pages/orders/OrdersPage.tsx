@@ -64,7 +64,7 @@ export default function OrdersPage() {
     const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<Order | null>(null);
-    const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
+    const [statusFilter, setStatusFilter] = useState<StatusFilter>('PENDING');
     const [ordersPage, setOrdersPage] = useState(1);
     const [ordersLimit, setOrdersLimit] = useState(10);
     const queryClient = useQueryClient();

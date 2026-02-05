@@ -7,6 +7,8 @@ import ProductsPage from "./pages/products/ProductsPage";
 import OrdersPage from "./pages/orders/OrdersPage";
 import ActivityLogsPage from "./pages/activity/ActivityLogsPage";
 import BankAccountsPage from "./pages/payments/BankAccountsPage";
+import ContactMessagesPage from "./pages/contact/ContactMessagesPage";
+import AdminProfilePage from "./pages/profile/AdminProfilePage";
 import RequireAdmin from "./components/RequireAdmin";
 
 function App() {
@@ -29,6 +31,8 @@ function App() {
           <Route path="orders" element={<OrdersPage />} />
           <Route path="activity-logs" element={<ActivityLogsPage />} />
           <Route path="bank-accounts" element={<BankAccountsPage />} />
+          <Route path="contact-messages" element={<ContactMessagesPage />} />
+          <Route path="profile" element={<AdminProfilePage />} />
         </Route>
       </Routes>
     </Providers>

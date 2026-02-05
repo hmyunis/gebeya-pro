@@ -61,7 +61,9 @@ export default function ActivityLogsPage() {
             },
             {
                 header: 'PATH',
-                cell: ({ row }) => <span className="text-sm text-default-700">{row.original.path}</span>,
+                cell: ({ row }) => (
+                    <span className="text-sm text-default-700">{row.original.path}</span>
+                ),
             },
             {
                 header: 'USER',
@@ -135,7 +137,8 @@ export default function ActivityLogsPage() {
             <div>
                 <h1 className="text-2xl font-bold">Activity Logs</h1>
                 <p className="text-sm text-default-500">
-                    Immutable audit trail of admin and system actions.
+                    Immutable audit trail of admin and system actions. Entries older than 90 days
+                    are automatically deleted.
                 </p>
             </div>
 

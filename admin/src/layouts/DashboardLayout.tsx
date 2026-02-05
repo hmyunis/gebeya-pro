@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Outlet, Link, useLocation } from "react-router-dom";
+import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { useIsFetching, useQuery } from "@tanstack/react-query";
 import { api, clearAuthToken } from "../lib/api";
+import { getImageUrl } from "../types";
 import {
   Navbar,
   NavbarContent,
@@ -15,11 +16,12 @@ import {
   Tooltip,
 } from "@heroui/react";
 import { Drawer, DrawerBody, DrawerContent, DrawerHeader } from "@heroui/drawer";
-import { CaretDown, House, Package, ShoppingCart, SignOut, UserCircle, FileText, List, SidebarSimple, Bank } from "@phosphor-icons/react";
+import { CaretDown, House, Package, ShoppingCart, SignOut, UserCircle, FileText, List, SidebarSimple, Bank, ChatText } from "@phosphor-icons/react";
 import { cn } from "../lib/utils";
 
 export default function DashboardLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
 
   const { data: user, isLoading, isError } = useQuery({
     queryKey: ['me'],
@@ -39,7 +41,9 @@ export default function DashboardLayout() {
     { name: "Orders", path: "/orders", icon: <ShoppingCart className="h-5 w-5" /> },
     { name: "Products", path: "/products", icon: <Package className="h-5 w-5" /> },
     { name: "Bank Accounts", path: "/bank-accounts", icon: <Bank className="h-5 w-5" /> },
+    { name: "Contact Messages", path: "/contact-messages", icon: <ChatText className="h-5 w-5" /> },
     { name: "Activity Logs", path: "/activity-logs", icon: <FileText className="h-5 w-5" /> },
+    { name: "Profile", path: "/profile", icon: <UserCircle className="h-5 w-5" /> },
   ];
 
   const isFetching = useIsFetching();
@@ -78,7 +82,7 @@ export default function DashboardLayout() {
 
   const displayName = user?.firstName ?? "Admin";
   const displayUsername = user?.username ?? "admin";
-  const avatarUrl = user?.avatarUrl;
+  const avatarUrl = user?.avatarUrl ? getImageUrl(user.avatarUrl) : undefined;
   const initials = displayName
     .split(" ")
     .filter(Boolean)
@@ -204,12 +208,12 @@ export default function DashboardLayout() {
                 <DropdownItem
                   key="profile"
                   startContent={<UserCircle className="h-4 w-4" />}
-                  textValue="Signed in user"
-                  isReadOnly
+                  textValue="Profile"
+                  onPress={() => navigate("/profile")}
                 >
                   <div className="flex flex-col">
                     <span className="text-sm font-medium">{displayName}</span>
-                    <span className="text-xs text-default-500">@{displayUsername}</span>
+                    <span className="text-xs text-default-500">View profile</span>
                   </div>
                 </DropdownItem>
                 <DropdownItem

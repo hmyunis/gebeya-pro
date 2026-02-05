@@ -35,4 +35,20 @@ export class UsersService {
     await this.userRepository.save(user);
     return user;
   }
+
+  async updateAvatar(
+    userId: number,
+    avatarUrl: string,
+  ): Promise<{ user: User; previousAvatarUrl: string | null }> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const previousAvatarUrl = user.avatarUrl ?? null;
+    user.avatarUrl = avatarUrl;
+
+    await this.userRepository.save(user);
+    return { user, previousAvatarUrl };
+  }
 }

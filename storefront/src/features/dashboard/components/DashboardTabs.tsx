@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import DashboardOverview from "@/features/dashboard/components/DashboardOverview";
 import DashboardOrders from "@/features/dashboard/components/DashboardOrders";
+import DashboardSettings from "@/features/dashboard/components/DashboardSettings";
 
 type DashboardTabKey = "overview" | "orders" | "settings";
 
@@ -70,15 +71,7 @@ export default function DashboardTabs() {
         ) : selectedKey === "orders" ? (
           <DashboardOrders />
         ) : (
-          <div className="rounded-3xl border border-black/5 bg-white/80 p-8 text-center shadow-[0_20px_40px_-28px_rgba(16,19,25,0.45)]">
-            <p className="text-[11px] uppercase tracking-[0.35em] text-ink-muted">
-              {title}
-            </p>
-            <p className="font-display mt-3 text-2xl">Coming soon</p>
-            <p className="mt-2 text-sm text-ink-muted">
-              This section is under construction.
-            </p>
-          </div>
+          <DashboardSettings title={title} />
         )}
       </div>
     </div>

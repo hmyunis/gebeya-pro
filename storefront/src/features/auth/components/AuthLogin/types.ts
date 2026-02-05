@@ -17,7 +17,7 @@ export type TelegramUser = {
 
 declare global {
   interface Window {
-    onTelegramAuth: (user: TelegramUser) => void;
+    onTelegramAuth?: (user: TelegramUser) => void;
+    onTelegramLink?: (user: TelegramUser) => void;
   }
 }
-

@@ -11,4 +11,3 @@ import { ContactMessage } from './entities/contact-message.entity';
   providers: [ContactService, ThrottlerBehindProxyGuard],
 })
 export class ContactModule {}
-

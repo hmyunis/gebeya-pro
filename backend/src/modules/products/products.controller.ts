@@ -18,7 +18,10 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
-import { buildPaginationMeta, normalizePagination } from '../../common/pagination';
+import {
+  buildPaginationMeta,
+  normalizePagination,
+} from '../../common/pagination';
 
 @Controller('products')
 export class ProductsController {
@@ -33,7 +36,10 @@ export class ProductsController {
     @Query('minPrice') minPrice?: string,
     @Query('maxPrice') maxPrice?: string,
   ) {
-    const { page: safePage, limit: safeLimit } = normalizePagination(page, limit);
+    const { page: safePage, limit: safeLimit } = normalizePagination(
+      page,
+      limit,
+    );
     const parsedCategoryIds =
       categoryIds
         ?.split(',')
@@ -100,12 +106,12 @@ export class ProductsController {
       return { data: [], meta: buildPaginationMeta(0, 1, 10) };
     }
 
-    const { page: safePage, limit: safeLimit } = normalizePagination(page, limit);
-    const { data, total, priceRanges } = await this.productsService.searchPaginated(
-      query,
-      safePage,
-      safeLimit,
+    const { page: safePage, limit: safeLimit } = normalizePagination(
+      page,
+      limit,
     );
+    const { data, total, priceRanges } =
+      await this.productsService.searchPaginated(query, safePage, safeLimit);
     return {
       data,
       meta: {

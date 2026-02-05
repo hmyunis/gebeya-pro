@@ -1,4 +1,10 @@
-import { IsNotEmpty, IsString, MaxLength, MinLength, Matches } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  MaxLength,
+  MinLength,
+  Matches,
+} from 'class-validator';
 
 export class PasswordRegisterDto {
   @IsString()
@@ -17,4 +23,3 @@ export class PasswordRegisterDto {
   @MaxLength(128)
   password: string;
 }
-

@@ -7,6 +7,7 @@ import {
 } from '@/config/env';
 import { GitHubIcon, TelegramIcon, TikTokIcon } from './SocialIcons';
 import QueryProvider from "@/app/QueryProvider";
+import { Lock } from 'lucide-react';
 
 function Logo() {
     return (
@@ -111,7 +112,7 @@ function FooterContent() {
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-2xl backdrop-blur-sm">
                         <div className="mb-3 flex items-center justify-between">
                             <h3 className="text-sm font-semibold text-white">Quick Message</h3>
-                            <span className="text-[10px] text-slate-500">Max 100 chars</span>
+                            <span className="text-[10px] text-slate-500"><Lock className='inline w-4 -mt-1' /> Secure Message</span>
                         </div>
                         <ContactUsForm />
                     </div>

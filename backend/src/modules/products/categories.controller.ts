@@ -16,7 +16,10 @@ import { Repository } from 'typeorm';
 import { Category } from './entities/category.entity';
 import { AuthGuard } from '@nestjs/passport';
 import slugify from 'slugify';
-import { buildPaginationMeta, normalizePagination } from '../../common/pagination';
+import {
+  buildPaginationMeta,
+  normalizePagination,
+} from '../../common/pagination';
 
 @Controller('categories')
 export class CategoriesController {
@@ -27,10 +30,11 @@ export class CategoriesController {
 
   @Get()
   async findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
-    const { page: safePage, limit: safeLimit, skip } = normalizePagination(
-      page,
-      limit,
-    );
+    const {
+      page: safePage,
+      limit: safeLimit,
+      skip,
+    } = normalizePagination(page, limit);
 
     const query = this.catRepo
       .createQueryBuilder('category')
@@ -53,7 +57,10 @@ export class CategoriesController {
 
   @UseGuards(AuthGuard('jwt'))
   @Patch(':id')
-  async update(@Param('id', ParseIntPipe) id: number, @Body('name') name: string) {
+  async update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body('name') name: string,
+  ) {
     const category = await this.catRepo.findOne({ where: { id } });
     if (!category) {
       throw new NotFoundException('Category not found');

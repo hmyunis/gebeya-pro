@@ -1,4 +1,9 @@
-import { randomBytes, scrypt, timingSafeEqual, type ScryptOptions } from 'crypto';
+import {
+  randomBytes,
+  scrypt,
+  timingSafeEqual,
+  type ScryptOptions,
+} from 'crypto';
 
 function scryptAsync(
   password: string,

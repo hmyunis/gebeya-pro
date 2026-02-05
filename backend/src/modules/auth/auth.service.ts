@@ -65,7 +65,6 @@ export class AuthService {
       if (isAdminTelegram && user.role !== UserRole.ADMIN) {
         user.role = UserRole.ADMIN;
       }
-
     }
 
     let seededLoginUsername = false;
@@ -146,7 +145,9 @@ export class AuthService {
       throw error;
     }
 
-    const safeUser = await this.userRepository.findOne({ where: { id: user.id } });
+    const safeUser = await this.userRepository.findOne({
+      where: { id: user.id },
+    });
     if (!safeUser) {
       throw new UnauthorizedException('Registration failed');
     }
@@ -342,7 +343,9 @@ export class AuthService {
 
     await this.userRepository.save(user);
 
-    const safeUser = await this.userRepository.findOne({ where: { id: user.id } });
+    const safeUser = await this.userRepository.findOne({
+      where: { id: user.id },
+    });
     if (!safeUser) {
       throw new UnauthorizedException('Invalid session');
     }

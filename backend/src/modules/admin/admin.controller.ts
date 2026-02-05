@@ -5,7 +5,10 @@ import { Order, OrderStatus } from '../orders/entities/order.entity';
 import { User } from '../users/entities/user.entity';
 import { BotService } from '../bot/bot.service';
 import { RolesGuard } from '../../common/guards/roles.guard';
-import { buildPaginationMeta, normalizePagination } from '../../common/pagination';
+import {
+  buildPaginationMeta,
+  normalizePagination,
+} from '../../common/pagination';
 import { UserRole } from '../users/entities/user.entity';
 import { AuditService } from '../audit/audit.service';
 import { OrderItem } from '../orders/entities/order-item.entity';
@@ -79,10 +82,11 @@ export class AdminController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
-    const { page: safePage, limit: safeLimit, skip } = normalizePagination(
-      page,
-      limit,
-    );
+    const {
+      page: safePage,
+      limit: safeLimit,
+      skip,
+    } = normalizePagination(page, limit);
 
     const userRepo = this.dataSource.getRepository(User);
     const qb = userRepo
@@ -111,7 +115,10 @@ export class AdminController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
-    const { page: safePage, limit: safeLimit } = normalizePagination(page, limit);
+    const { page: safePage, limit: safeLimit } = normalizePagination(
+      page,
+      limit,
+    );
     const { data, total } = await this.auditService.findAllPaginated(
       safePage,
       safeLimit,
@@ -125,9 +132,11 @@ export class AdminController {
     @Query('limit') limit?: string,
   ) {
     const parsedDays = Number.parseInt(days ?? '', 10);
-    const rangeDays = Number.isFinite(parsedDays) && parsedDays > 0 ? parsedDays : 7;
+    const rangeDays =
+      Number.isFinite(parsedDays) && parsedDays > 0 ? parsedDays : 7;
     const parsedLimit = Number.parseInt(limit ?? '', 10);
-    const take = Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 10;
+    const take =
+      Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 10;
 
     const startDate = new Date();
     startDate.setHours(0, 0, 0, 0);
@@ -151,7 +160,9 @@ export class AdminController {
           .addSelect('COUNT(order.id)', 'orderCount')
           .addSelect('COALESCE(SUM(order.totalAmount), 0)', 'revenue')
           .where('order.createdAt >= :startDate', { startDate })
-          .andWhere('order.status != :status', { status: OrderStatus.CANCELLED })
+          .andWhere('order.status != :status', {
+            status: OrderStatus.CANCELLED,
+          })
           .groupBy('DATE(order.createdAt)')
           .orderBy('DATE(order.createdAt)', 'ASC')
           .getRawMany<{ date: string; orderCount: string; revenue: string }>(),
@@ -165,7 +176,11 @@ export class AdminController {
           .groupBy('item.productName')
           .orderBy('revenue', 'DESC')
           .limit(take)
-          .getRawMany<{ productName: string; quantity: string; revenue: string }>(),
+          .getRawMany<{
+            productName: string;
+            quantity: string;
+            revenue: string;
+          }>(),
         orderRepo
           .createQueryBuilder('order')
           .leftJoin('order.user', 'user')
@@ -218,7 +233,7 @@ export class AdminController {
     };
 
     for (const row of statusCounts) {
-      const status = row.status as OrderStatus;
+      const status = row.status;
       if (status in counts) {
         counts[status] = Number.parseInt(row.count, 10);
       }

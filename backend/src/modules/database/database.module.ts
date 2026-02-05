@@ -10,7 +10,8 @@ import * as path from 'path';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
         const synchronize = configService.get<boolean>('DB_SYNC') ?? false;
-        const migrationsRun = configService.get<boolean>('RUN_MIGRATIONS') ?? false;
+        const migrationsRun =
+          configService.get<boolean>('RUN_MIGRATIONS') ?? false;
 
         return {
           type: 'mysql',

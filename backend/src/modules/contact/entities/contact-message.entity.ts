@@ -21,4 +21,3 @@ export class ContactMessage extends AbstractEntity {
   @Column({ type: 'datetime', nullable: true })
   readAt: Date | null;
 }
-

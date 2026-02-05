@@ -388,9 +388,12 @@ export default function OrderModal({
                     label="Full address"
                     placeholder="e.g. Addis Ababa, Bole"
                     value={address}
-                    onValueChange={setAddress}
+                    onValueChange={(val) => {
+                      if (val.length <= 30) setAddress(val);
+                    }}
                     isDisabled={orderMutation.isPending}
                     variant="bordered"
+                    maxLength={30}
                   />
 
                   <div className="space-y-2">

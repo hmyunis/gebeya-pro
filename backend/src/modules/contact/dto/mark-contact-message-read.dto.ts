@@ -4,4 +4,3 @@ export class MarkContactMessageReadDto {
   @IsBoolean()
   isRead: boolean;
 }
-

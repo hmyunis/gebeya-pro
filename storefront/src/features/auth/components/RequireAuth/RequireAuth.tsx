@@ -15,7 +15,7 @@ export default function RequireAuth({
 }) {
   const { user, authReady } = useAuth();
   const hasRedirected = useRef(false);
-  const toastKeyRef = useRef<string | number | null>(null);
+  const toastKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!authReady) return;
@@ -31,12 +31,13 @@ export default function RequireAuth({
 
     if (!authReady) {
       if (toastKeyRef.current) return;
-      toastKeyRef.current = addToast({
+      const key = addToast({
         title: "Checking your session…",
         description: "Just a moment.",
         color: "default",
         timeout: 60_000,
       });
+      toastKeyRef.current = typeof key === "string" ? key : String(key);
       return;
     }
 

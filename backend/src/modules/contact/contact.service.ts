@@ -42,4 +42,3 @@ export class ContactService {
     return this.contactRepo.save(msg);
   }
 }
-

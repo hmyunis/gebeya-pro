@@ -17,7 +17,7 @@ export class AddOrderReceiptUrl20260205100000 implements MigrationInterface {
 
     if (!(await hasColumn('receiptUrl'))) {
       await queryRunner.query(
-        "ALTER TABLE `orders` ADD COLUMN `receiptUrl` varchar(512) NULL",
+        'ALTER TABLE `orders` ADD COLUMN `receiptUrl` varchar(512) NULL',
       );
     }
   }
@@ -35,8 +35,7 @@ export class AddOrderReceiptUrl20260205100000 implements MigrationInterface {
     };
 
     if (await hasColumn('receiptUrl')) {
-      await queryRunner.query("ALTER TABLE `orders` DROP COLUMN `receiptUrl`");
+      await queryRunner.query('ALTER TABLE `orders` DROP COLUMN `receiptUrl`');
     }
   }
 }
-

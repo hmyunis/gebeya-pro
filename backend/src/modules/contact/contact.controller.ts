@@ -45,4 +45,3 @@ export class ContactController {
     return this.contactService.setReadAdmin(id, dto.isRead, req.user.userId);
   }
 }
-

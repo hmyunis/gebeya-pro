@@ -1,4 +1,10 @@
-import { IsEnum, IsOptional, IsString, IsUrl, MaxLength } from 'class-validator';
+import {
+  IsEnum,
+  IsOptional,
+  IsString,
+  IsUrl,
+  MaxLength,
+} from 'class-validator';
 import { BankAccountStatus } from '../entities/bank-account.entity';
 
 export class UpdateBankAccountDto {

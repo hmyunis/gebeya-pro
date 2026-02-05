@@ -261,7 +261,7 @@ export default function DashboardOverview() {
           <div className="mt-6 space-y-4">
             {isLoading ? (
               <div className="space-y-4">
-                {Array.from({ length: 3 }).map((_, index) => (
+                {Array.from({ length: 4 }).map((_, index) => (
                   <div
                     key={`order-skeleton-${index}`}
                     className="rounded-2xl border border-black/5 bg-white/70 p-4"
@@ -285,7 +285,7 @@ export default function DashboardOverview() {
               <div className="rounded-2xl border border-dashed border-black/10 p-6 text-center">
                 <p className="font-display text-xl">No orders yet</p>
                 <p className="text-ink-muted mt-1 text-sm">
-                  Your latest 6 orders will appear here.
+                  Your latest 4 orders will appear here.
                 </p>
               </div>
             ) : (

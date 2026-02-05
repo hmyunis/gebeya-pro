@@ -20,6 +20,10 @@ export class BankAccount extends AbstractEntity {
   @Column({ type: 'varchar', length: 64 })
   accountNumber: string;
 
-  @Column({ type: 'enum', enum: BankAccountStatus, default: BankAccountStatus.ACTIVE })
+  @Column({
+    type: 'enum',
+    enum: BankAccountStatus,
+    default: BankAccountStatus.ACTIVE,
+  })
   status: BankAccountStatus;
 }

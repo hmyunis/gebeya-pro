@@ -78,7 +78,9 @@ ${itemsList}
       );
     } catch (error) {
       const err = error as Error;
-      this.logger.warn(`Failed to send receipt for order #${order.id}: ${err.message}`);
+      this.logger.warn(
+        `Failed to send receipt for order #${order.id}: ${err.message}`,
+      );
     }
   }
 
@@ -105,13 +107,16 @@ ${itemsList}
     }
   }
 
-  private resolveReceiptFilePath(receiptUrl: string | null | undefined): string | null {
+  private resolveReceiptFilePath(
+    receiptUrl: string | null | undefined,
+  ): string | null {
     if (!receiptUrl) return null;
     if (!receiptUrl.startsWith('/uploads/receipts/')) return null;
 
     const relative = receiptUrl.replace(/^\//, '');
     const resolved = path.resolve(process.cwd(), relative);
-    const allowedRoot = path.resolve(process.cwd(), 'uploads', 'receipts') + path.sep;
+    const allowedRoot =
+      path.resolve(process.cwd(), 'uploads', 'receipts') + path.sep;
     if (!resolved.startsWith(allowedRoot)) return null;
     if (!fs.existsSync(resolved)) return null;
     return resolved;

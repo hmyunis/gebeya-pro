@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class MakeTelegramIdNullable20260204190000
-  implements MigrationInterface
-{
+export class MakeTelegramIdNullable20260204190000 implements MigrationInterface {
   name = 'MakeTelegramIdNullable20260204190000';
 
   async up(queryRunner: QueryRunner): Promise<void> {
@@ -36,7 +34,10 @@ export class MakeTelegramIdNullable20260204190000
     const nullCountRows = await queryRunner.query(
       `SELECT COUNT(*) AS count FROM \`users\` WHERE \`telegramId\` IS NULL`,
     );
-    const nullCount = Number.parseInt(String(nullCountRows?.[0]?.count ?? 0), 10);
+    const nullCount = Number.parseInt(
+      String(nullCountRows?.[0]?.count ?? 0),
+      10,
+    );
     if (nullCount > 0) {
       throw new Error(
         'Cannot revert telegramId to NOT NULL while NULL values exist',
@@ -62,4 +63,3 @@ export class MakeTelegramIdNullable20260204190000
     );
   }
 }
-

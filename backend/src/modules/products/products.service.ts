@@ -62,7 +62,7 @@ export class ProductsService {
     const normalizedQuery = filters.query?.trim().toLowerCase() ?? '';
     if (normalizedQuery.length > 0) {
       qb.andWhere(
-        '(LOWER(product.name) LIKE :q OR LOWER(COALESCE(product.description, \'\')) LIKE :q)',
+        "(LOWER(product.name) LIKE :q OR LOWER(COALESCE(product.description, '')) LIKE :q)",
         { q: `%${normalizedQuery}%` },
       );
     }

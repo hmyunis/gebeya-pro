@@ -5,8 +5,7 @@ export class AddLocalAuthFields20260204170000 implements MigrationInterface {
 
   async up(queryRunner: QueryRunner): Promise<void> {
     const dbName =
-      (await queryRunner.query('SELECT DATABASE() AS name'))?.[0]?.name ??
-      '';
+      (await queryRunner.query('SELECT DATABASE() AS name'))?.[0]?.name ?? '';
 
     const hasColumn = async (column: string) => {
       const rows = await queryRunner.query(
@@ -26,35 +25,34 @@ export class AddLocalAuthFields20260204170000 implements MigrationInterface {
 
     if (!(await hasColumn('loginUsername'))) {
       await queryRunner.query(
-        "ALTER TABLE `users` ADD COLUMN `loginUsername` varchar(32) NULL",
+        'ALTER TABLE `users` ADD COLUMN `loginUsername` varchar(32) NULL',
       );
     }
     if (!(await hasColumn('passwordHash'))) {
       await queryRunner.query(
-        "ALTER TABLE `users` ADD COLUMN `passwordHash` varchar(255) NULL",
+        'ALTER TABLE `users` ADD COLUMN `passwordHash` varchar(255) NULL',
       );
     }
     if (!(await hasColumn('passwordLoginFailedAttempts'))) {
       await queryRunner.query(
-        "ALTER TABLE `users` ADD COLUMN `passwordLoginFailedAttempts` int NOT NULL DEFAULT 0",
+        'ALTER TABLE `users` ADD COLUMN `passwordLoginFailedAttempts` int NOT NULL DEFAULT 0',
       );
     }
     if (!(await hasColumn('passwordLoginLockedUntil'))) {
       await queryRunner.query(
-        "ALTER TABLE `users` ADD COLUMN `passwordLoginLockedUntil` datetime NULL",
+        'ALTER TABLE `users` ADD COLUMN `passwordLoginLockedUntil` datetime NULL',
       );
     }
     if (!(await hasIndex('IDX_users_loginUsername'))) {
       await queryRunner.query(
-        "CREATE UNIQUE INDEX `IDX_users_loginUsername` ON `users` (`loginUsername`)",
+        'CREATE UNIQUE INDEX `IDX_users_loginUsername` ON `users` (`loginUsername`)',
       );
     }
   }
 
   async down(queryRunner: QueryRunner): Promise<void> {
     const dbName =
-      (await queryRunner.query('SELECT DATABASE() AS name'))?.[0]?.name ??
-      '';
+      (await queryRunner.query('SELECT DATABASE() AS name'))?.[0]?.name ?? '';
 
     const hasColumn = async (column: string) => {
       const rows = await queryRunner.query(
@@ -74,27 +72,25 @@ export class AddLocalAuthFields20260204170000 implements MigrationInterface {
 
     if (await hasIndex('IDX_users_loginUsername')) {
       await queryRunner.query(
-        "DROP INDEX `IDX_users_loginUsername` ON `users`",
+        'DROP INDEX `IDX_users_loginUsername` ON `users`',
       );
     }
     if (await hasColumn('passwordLoginLockedUntil')) {
       await queryRunner.query(
-        "ALTER TABLE `users` DROP COLUMN `passwordLoginLockedUntil`",
+        'ALTER TABLE `users` DROP COLUMN `passwordLoginLockedUntil`',
       );
     }
     if (await hasColumn('passwordLoginFailedAttempts')) {
       await queryRunner.query(
-        "ALTER TABLE `users` DROP COLUMN `passwordLoginFailedAttempts`",
+        'ALTER TABLE `users` DROP COLUMN `passwordLoginFailedAttempts`',
       );
     }
     if (await hasColumn('passwordHash')) {
-      await queryRunner.query(
-        "ALTER TABLE `users` DROP COLUMN `passwordHash`",
-      );
+      await queryRunner.query('ALTER TABLE `users` DROP COLUMN `passwordHash`');
     }
     if (await hasColumn('loginUsername')) {
       await queryRunner.query(
-        "ALTER TABLE `users` DROP COLUMN `loginUsername`",
+        'ALTER TABLE `users` DROP COLUMN `loginUsername`',
       );
     }
   }

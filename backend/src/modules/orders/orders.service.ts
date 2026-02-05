@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, Repository, type FindOptionsWhere } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { Order, OrderStatus } from './entities/order.entity';
@@ -13,7 +13,7 @@ import { User } from '../users/entities/user.entity';
 import { BotService } from '../bot/bot.service';
 import { ReceiptStorageService } from './receipt-storage.service';
 
-const CUSTOMER_OVERVIEW_LIMIT = 6;
+const CUSTOMER_OVERVIEW_LIMIT = 4;
 
 @Injectable()
 export class OrdersService {
@@ -31,6 +31,33 @@ export class OrdersService {
     const [data, total] = await orderRepo.findAndCount({
       where,
       relations: ['user', 'items'],
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    return { data, total };
+  }
+
+  async findCustomerPaginated(
+    userId: number,
+    page: number,
+    limit: number,
+    status?: OrderStatus,
+    orderId?: number,
+  ) {
+    const orderRepo = this.dataSource.getRepository(Order);
+    const where: FindOptionsWhere<Order> = { user: { id: userId } };
+    if (status) {
+      where.status = status;
+    }
+    if (orderId) {
+      where.id = orderId;
+    }
+
+    const [data, total] = await orderRepo.findAndCount({
+      where,
+      relations: ['items', 'items.product'],
       order: { createdAt: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,
@@ -57,7 +84,7 @@ export class OrdersService {
     };
 
     for (const row of rows) {
-      const status = row.status as OrderStatus;
+      const status = row.status;
       if (status in counts) {
         counts[status] = Number.parseInt(row.count, 10);
       }
@@ -202,7 +229,10 @@ export class OrdersService {
 
     let receiptUrl: string | undefined;
     if (receipt?.buffer?.length) {
-      receiptUrl = await this.receiptStorage.save(receipt.buffer, receipt.filename);
+      receiptUrl = await this.receiptStorage.save(
+        receipt.buffer,
+        receipt.filename,
+      );
     }
 
     const queryRunner = this.dataSource.createQueryRunner();
@@ -270,7 +300,10 @@ export class OrdersService {
       await queryRunner.rollbackTransaction();
       if (receiptUrl) {
         this.receiptStorage.delete(receiptUrl).catch((cleanupError) => {
-          console.error('Failed to cleanup receipt after order rollback', cleanupError);
+          console.error(
+            'Failed to cleanup receipt after order rollback',
+            cleanupError,
+          );
         });
       }
       throw error;
@@ -332,6 +365,7 @@ export class OrdersService {
       throw new BadRequestException('Only cancelled orders can be deleted');
     }
 
+    const receiptUrl = existing.receiptUrl;
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -345,6 +379,55 @@ export class OrdersService {
 
       await queryRunner.manager.delete(Order, id);
       await queryRunner.commitTransaction();
+
+      if (receiptUrl) {
+        this.receiptStorage.delete(receiptUrl).catch((error) => {
+          console.error('Failed to delete receipt after order removal', error);
+        });
+      }
+
+      return { success: true };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async deleteCustomerPendingOrder(userId: number, orderId: number) {
+    const orderRepo = this.dataSource.getRepository(Order);
+    const existing = await orderRepo.findOne({
+      where: { id: orderId, user: { id: userId } },
+      relations: ['items', 'items.product'],
+    });
+    if (!existing) {
+      throw new NotFoundException('Order not found');
+    }
+    if (existing.status !== OrderStatus.PENDING) {
+      throw new BadRequestException('Only pending orders can be deleted');
+    }
+
+    const receiptUrl = existing.receiptUrl;
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      for (const item of existing.items ?? []) {
+        if (!item.product) continue;
+        item.product.stock += item.quantity;
+        await queryRunner.manager.save(item.product);
+      }
+
+      await queryRunner.manager.delete(Order, orderId);
+      await queryRunner.commitTransaction();
+
+      if (receiptUrl) {
+        this.receiptStorage.delete(receiptUrl).catch((error) => {
+          console.error('Failed to delete receipt after customer order removal', error);
+        });
+      }
 
       return { success: true };
     } catch (error) {
@@ -365,7 +448,10 @@ export class OrdersService {
       throw new NotFoundException('Order not found');
     }
 
-    const receiptUrl = await this.receiptStorage.save(receipt.buffer, receipt.filename);
+    const receiptUrl = await this.receiptStorage.save(
+      receipt.buffer,
+      receipt.filename,
+    );
     const previous = existing.receiptUrl;
     existing.receiptUrl = receiptUrl;
     await orderRepo.save(existing);

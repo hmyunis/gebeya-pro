@@ -16,7 +16,10 @@ import { type FastifyRequest } from 'fastify';
 import { AuthGuard } from '@nestjs/passport';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
-import { buildPaginationMeta, normalizePagination } from '../../common/pagination';
+import {
+  buildPaginationMeta,
+  normalizePagination,
+} from '../../common/pagination';
 import { OrderStatus } from './entities/order.entity';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
@@ -42,14 +45,11 @@ export class OrdersController {
     @Query('limit') limit?: string,
     @Query('status') status?: string,
   ) {
-    const { page: safePage, limit: safeLimit } = normalizePagination(page, limit);
-    let parsedStatus: OrderStatus | undefined;
-    if (status) {
-      if (!Object.values(OrderStatus).includes(status as OrderStatus)) {
-        throw new BadRequestException('Invalid order status');
-      }
-      parsedStatus = status as OrderStatus;
-    }
+    const { page: safePage, limit: safeLimit } = normalizePagination(
+      page,
+      limit,
+    );
+    const parsedStatus = this.parseStatus(status);
 
     const { data, total } = await this.ordersService.findAllPaginated(
       safePage,
@@ -69,6 +69,54 @@ export class OrdersController {
   @Get('overview')
   async getOverview(@Req() req: AuthenticatedRequest) {
     return this.ordersService.getCustomerOverview(req.user.userId);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Get('my')
+  async findMyOrders(
+    @Req() req: AuthenticatedRequest,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('status') status?: string,
+    @Query('q') q?: string,
+  ) {
+    const { page: safePage, limit: safeLimit } = normalizePagination(
+      page,
+      limit,
+    );
+    const parsedStatus = this.parseStatus(status);
+
+    const trimmed = String(q ?? '').trim();
+    let orderId: number | undefined;
+    if (trimmed.length > 0) {
+      if (!/^\d+$/.test(trimmed)) {
+        throw new BadRequestException('Invalid order search query');
+      }
+      const parsed = Number.parseInt(trimmed, 10);
+      if (!Number.isFinite(parsed) || parsed <= 0) {
+        throw new BadRequestException('Invalid order search query');
+      }
+      orderId = parsed;
+    }
+
+    const { data, total } = await this.ordersService.findCustomerPaginated(
+      req.user.userId,
+      safePage,
+      safeLimit,
+      parsedStatus,
+      orderId,
+    );
+
+    return { data, meta: buildPaginationMeta(total, safePage, safeLimit) };
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Delete('my/:id')
+  deleteMyPendingOrder(
+    @Req() req: AuthenticatedRequest,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.ordersService.deleteCustomerPendingOrder(req.user.userId, id);
   }
 
   @UseGuards(AuthGuard('jwt'))
@@ -98,7 +146,10 @@ export class OrdersController {
 
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Patch(':id/receipt')
-  async updateReceipt(@Param('id', ParseIntPipe) id: number, @Req() req: FastifyRequest) {
+  async updateReceipt(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: FastifyRequest,
+  ) {
     const receipt = await this.parseReceiptFile(req);
     return this.ordersService.updateReceipt(id, receipt);
   }
@@ -158,7 +209,9 @@ export class OrdersController {
     return { dto };
   }
 
-  private async parseReceiptFile(req: FastifyRequest): Promise<{ buffer: Buffer; filename?: string }> {
+  private async parseReceiptFile(
+    req: FastifyRequest,
+  ): Promise<{ buffer: Buffer; filename?: string }> {
     const contentType = String(req.headers['content-type'] ?? '');
     if (!contentType.includes('multipart/form-data')) {
       throw new BadRequestException('Expected multipart/form-data');
@@ -183,5 +236,13 @@ export class OrdersController {
       throw new BadRequestException('Receipt file is required');
     }
     return receipt;
+  }
+
+  private parseStatus(status?: string): OrderStatus | undefined {
+    if (!status) return undefined;
+    if (!Object.values(OrderStatus).includes(status as OrderStatus)) {
+      throw new BadRequestException('Invalid order status');
+    }
+    return status as OrderStatus;
   }
 }

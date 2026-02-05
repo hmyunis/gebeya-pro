@@ -51,4 +51,3 @@ export class CreateContactMessages20260205140000 implements MigrationInterface {
     }
   }
 }
-

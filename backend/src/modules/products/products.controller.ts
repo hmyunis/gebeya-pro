@@ -25,13 +25,69 @@ export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
   @Get()
-  async findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
+  async findAll(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('q') query?: string,
+    @Query('categoryIds') categoryIds?: string,
+    @Query('minPrice') minPrice?: string,
+    @Query('maxPrice') maxPrice?: string,
+  ) {
     const { page: safePage, limit: safeLimit } = normalizePagination(page, limit);
-    const { data, total } = await this.productsService.findAllPaginated(
-      safePage,
-      safeLimit,
-    );
-    return { data, meta: buildPaginationMeta(total, safePage, safeLimit) };
+    const parsedCategoryIds =
+      categoryIds
+        ?.split(',')
+        .map((value) => Number.parseInt(value.trim(), 10))
+        .filter((value) => Number.isFinite(value)) ?? [];
+
+    let parsedMinPrice = Number.parseFloat(minPrice ?? '');
+    let parsedMaxPrice = Number.parseFloat(maxPrice ?? '');
+    const hasMinPrice = Number.isFinite(parsedMinPrice);
+    const hasMaxPrice = Number.isFinite(parsedMaxPrice);
+
+    if (hasMinPrice && hasMaxPrice && parsedMinPrice > parsedMaxPrice) {
+      const temp = parsedMinPrice;
+      parsedMinPrice = parsedMaxPrice;
+      parsedMaxPrice = temp;
+    }
+
+    const filters = {
+      query,
+      categoryIds: parsedCategoryIds,
+      minPrice: hasMinPrice ? parsedMinPrice : undefined,
+      maxPrice: hasMaxPrice ? parsedMaxPrice : undefined,
+    };
+
+    const { data, total, priceRanges } =
+      await this.productsService.findFilteredPaginated(
+        filters,
+        safePage,
+        safeLimit,
+      );
+    return {
+      data,
+      meta: {
+        ...buildPaginationMeta(total, safePage, safeLimit),
+        priceRanges,
+      },
+    };
+  }
+
+  @Get('filters')
+  async filterOptions(
+    @Query('q') query?: string,
+    @Query('categoryIds') categoryIds?: string,
+  ) {
+    const parsedCategoryIds =
+      categoryIds
+        ?.split(',')
+        .map((value) => Number.parseInt(value.trim(), 10))
+        .filter((value) => Number.isFinite(value)) ?? [];
+
+    return this.productsService.getFilterOptions({
+      query,
+      categoryIds: parsedCategoryIds,
+    });
   }
 
   @Get('search')
@@ -45,12 +101,18 @@ export class ProductsController {
     }
 
     const { page: safePage, limit: safeLimit } = normalizePagination(page, limit);
-    const { data, total } = await this.productsService.searchPaginated(
+    const { data, total, priceRanges } = await this.productsService.searchPaginated(
       query,
       safePage,
       safeLimit,
     );
-    return { data, meta: buildPaginationMeta(total, safePage, safeLimit) };
+    return {
+      data,
+      meta: {
+        ...buildPaginationMeta(total, safePage, safeLimit),
+        priceRanges,
+      },
+    };
   }
 
   // Only Admins can create (We'll add Admin Guard later)

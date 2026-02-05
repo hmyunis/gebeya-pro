@@ -21,8 +21,10 @@ export class AuditInterceptor implements NestInterceptor {
         tap(() => {
           const user = req.user;
           const body = { ...req.body };
-          if (body.password) {
-            body.password = '***';
+          for (const [key, value] of Object.entries(body)) {
+            if (key.toLowerCase().includes('password') && value !== undefined) {
+              body[key] = '***';
+            }
           }
 
           this.auditService.log({

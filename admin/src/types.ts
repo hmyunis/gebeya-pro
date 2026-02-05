@@ -54,9 +54,23 @@ export interface Order {
   totalAmount: number;
   status: OrderStatus;
   shippingAddress: string;
+  receiptUrl?: string;
   createdAt: string;
   user: User;
   items: OrderItem[];
+}
+
+export type BankAccountStatus = 'ACTIVE' | 'INACTIVE';
+
+export interface BankAccount {
+  id: number;
+  bankName: string;
+  logoUrl?: string | null;
+  accountHolderName: string;
+  accountNumber: string;
+  status: BankAccountStatus;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ActivityLog {

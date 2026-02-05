@@ -12,8 +12,8 @@ import {
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle, Package, Truck, XCircle, X } from "@phosphor-icons/react";
 import { api } from "../../lib/api";
-import type { Order, OrderStatus } from "../../types";
-import type { JSX } from "react";
+import { getImageUrl, type Order, type OrderStatus } from "../../types";
+import { useRef, useState, type JSX } from "react";
 
 interface OrderDetailModalProps {
   order: Order | null;
@@ -50,6 +50,9 @@ const formatBirr = (value: number | string) => {
 
 export default function OrderDetailModal({ order, isOpen, onClose }: OrderDetailModalProps) {
   const queryClient = useQueryClient();
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [isDraggingReceipt, setIsDraggingReceipt] = useState(false);
+  const receiptInputRef = useRef<HTMLInputElement | null>(null);
 
   const mutation = useMutation({
     mutationFn: async (newStatus: OrderStatus) => {
@@ -76,6 +79,44 @@ export default function OrderDetailModal({ order, isOpen, onClose }: OrderDetail
       });
     },
   });
+
+  const receiptMutation = useMutation({
+    mutationFn: async (file: File) => {
+      if (!order) {
+        throw new Error("Order not found");
+      }
+      const formData = new FormData();
+      formData.append("receipt", file);
+      return api.patch(`/orders/${order.id}/receipt`, formData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      addToast({
+        title: "Receipt Updated",
+        description: "Receipt file has been attached to the order.",
+        color: "success",
+      });
+      setReceiptFile(null);
+      setIsDraggingReceipt(false);
+    },
+    onError: (err: any) => {
+      console.error(err);
+      addToast({
+        title: "Upload Failed",
+        description: err.response?.data?.message || "Failed to upload receipt.",
+        color: "danger",
+      });
+    },
+  });
+
+  const setReceiptFromFileList = (files: FileList | null) => {
+    const file = files?.[0] ?? null;
+    if (!file) {
+      setReceiptFile(null);
+      return;
+    }
+    setReceiptFile(file);
+  };
 
   if (!order) return null;
 
@@ -141,6 +182,116 @@ export default function OrderDetailModal({ order, isOpen, onClose }: OrderDetail
                 <p className="font-semibold text-primary">
                   {formatBirr(order.totalAmount)} Birr
                 </p>
+              </div>
+            </section>
+
+            <Divider />
+
+            <section>
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold uppercase text-default-400">Receipt</p>
+                {order.receiptUrl ? (
+                  <a
+                    href={getImageUrl(order.receiptUrl)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs font-semibold text-primary underline underline-offset-4"
+                  >
+                    View / Download
+                  </a>
+                ) : (
+                  <span className="text-xs text-default-500">No receipt yet</span>
+                )}
+              </div>
+
+              <input
+                ref={receiptInputRef}
+                type="file"
+                className="hidden"
+                onChange={(e) => setReceiptFromFileList(e.target.files)}
+                disabled={mutation.isPending || receiptMutation.isPending}
+              />
+
+              <div
+                role="button"
+                tabIndex={0}
+                aria-label="Upload receipt"
+                onClick={() => receiptInputRef.current?.click()}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    receiptInputRef.current?.click();
+                  }
+                }}
+                onDragEnter={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (!receiptMutation.isPending) setIsDraggingReceipt(true);
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (!receiptMutation.isPending) setIsDraggingReceipt(true);
+                }}
+                onDragLeave={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDraggingReceipt(false);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDraggingReceipt(false);
+                  if (receiptMutation.isPending) return;
+                  setReceiptFromFileList(e.dataTransfer.files);
+                }}
+                className={[
+                  "mt-2 rounded-xl border border-dashed px-3 py-3 transition",
+                  "bg-default-50",
+                  isDraggingReceipt ? "border-default-500" : "border-default-300",
+                  receiptMutation.isPending ? "opacity-60 pointer-events-none" : "",
+                ].join(" ")}
+              >
+                {receiptFile ? (
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-default-700 line-clamp-1">
+                        {receiptFile.name}
+                      </p>
+                      <p className="text-xs text-default-500">
+                        {(receiptFile.size / (1024 * 1024)).toFixed(2)} MB
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="flat"
+                        onPress={() => setReceiptFile(null)}
+                      >
+                        Clear
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        color="primary"
+                        isLoading={receiptMutation.isPending}
+                        onPress={() => receiptFile && receiptMutation.mutate(receiptFile)}
+                      >
+                        Upload
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-default-700">
+                      Drop a file here, or click to browse
+                    </p>
+                    <p className="text-xs text-default-500">
+                      Any file type up to 25MB.
+                    </p>
+                  </div>
+                )}
               </div>
             </section>
 

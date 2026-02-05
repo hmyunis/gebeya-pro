@@ -21,6 +21,8 @@ import { OrderStatus } from './entities/order.entity';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { CreateAdminOrderDto } from './dto/create-admin-order.dto';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
 
 type AuthenticatedRequest = FastifyRequest & {
   user: {
@@ -64,9 +66,16 @@ export class OrdersController {
   }
 
   @UseGuards(AuthGuard('jwt'))
+  @Get('overview')
+  async getOverview(@Req() req: AuthenticatedRequest) {
+    return this.ordersService.getCustomerOverview(req.user.userId);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
   @Post()
-  create(@Req() req: AuthenticatedRequest, @Body() dto: CreateOrderDto) {
-    return this.ordersService.create(req.user.userId, dto);
+  async create(@Req() req: AuthenticatedRequest) {
+    const { dto, receipt } = await this.parseCreateOrderRequest(req);
+    return this.ordersService.create(req.user.userId, dto, receipt);
   }
 
   @UseGuards(AuthGuard('jwt'), RolesGuard)
@@ -88,8 +97,91 @@ export class OrdersController {
   }
 
   @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Patch(':id/receipt')
+  async updateReceipt(@Param('id', ParseIntPipe) id: number, @Req() req: FastifyRequest) {
+    const receipt = await this.parseReceiptFile(req);
+    return this.ordersService.updateReceipt(id, receipt);
+  }
+
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.ordersService.remove(id);
+  }
+
+  private async parseCreateOrderRequest(req: FastifyRequest): Promise<{
+    dto: CreateOrderDto;
+    receipt?: { buffer: Buffer; filename?: string };
+  }> {
+    const contentType = String(req.headers['content-type'] ?? '');
+    if (contentType.includes('multipart/form-data')) {
+      const parts = (req as any).parts?.();
+      if (!parts) {
+        throw new BadRequestException('Invalid multipart request');
+      }
+
+      const body: Record<string, unknown> = {};
+      let receipt: { buffer: Buffer; filename?: string } | undefined;
+
+      for await (const part of parts) {
+        if (part.type === 'file') {
+          const buffer = await part.toBuffer();
+          if (part.fieldname === 'receipt' && buffer.length > 0) {
+            receipt = { buffer, filename: part.filename };
+          }
+        } else {
+          body[part.fieldname] = part.value;
+        }
+      }
+
+      if (typeof body.items === 'string') {
+        try {
+          body.items = JSON.parse(body.items);
+        } catch {
+          throw new BadRequestException('Invalid items payload');
+        }
+      }
+
+      const dto = plainToInstance(CreateOrderDto, body);
+      const errors = await validate(dto);
+      if (errors.length > 0) {
+        throw new BadRequestException(errors);
+      }
+      return { dto, receipt };
+    }
+
+    const dto = plainToInstance(CreateOrderDto, (req as any).body ?? {});
+    const errors = await validate(dto);
+    if (errors.length > 0) {
+      throw new BadRequestException(errors);
+    }
+    return { dto };
+  }
+
+  private async parseReceiptFile(req: FastifyRequest): Promise<{ buffer: Buffer; filename?: string }> {
+    const contentType = String(req.headers['content-type'] ?? '');
+    if (!contentType.includes('multipart/form-data')) {
+      throw new BadRequestException('Expected multipart/form-data');
+    }
+
+    const parts = (req as any).parts?.();
+    if (!parts) {
+      throw new BadRequestException('Invalid multipart request');
+    }
+
+    let receipt: { buffer: Buffer; filename?: string } | undefined;
+    for await (const part of parts) {
+      if (part.type === 'file') {
+        const buffer = await part.toBuffer();
+        if (part.fieldname === 'receipt' && buffer.length) {
+          receipt = { buffer, filename: part.filename };
+        }
+      }
+    }
+
+    if (!receipt) {
+      throw new BadRequestException('Receipt file is required');
+    }
+    return receipt;
   }
 }

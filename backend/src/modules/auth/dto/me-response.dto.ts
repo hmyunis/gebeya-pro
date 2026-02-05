@@ -4,4 +4,6 @@ export class MeResponseDto {
   firstName?: string | null;
   username?: string | null;
   avatarUrl?: string | null;
+  loginUsername?: string | null;
+  hasTelegram?: boolean;
 }

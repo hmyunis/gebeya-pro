@@ -11,12 +11,16 @@ import { OrderItem } from './entities/order-item.entity';
 import { Product } from '../products/entities/product.entity';
 import { User } from '../users/entities/user.entity';
 import { BotService } from '../bot/bot.service';
+import { ReceiptStorageService } from './receipt-storage.service';
+
+const CUSTOMER_OVERVIEW_LIMIT = 6;
 
 @Injectable()
 export class OrdersService {
   constructor(
     private readonly dataSource: DataSource,
     private readonly botService: BotService,
+    private readonly receiptStorage: ReceiptStorageService,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
   ) {}
@@ -63,18 +67,142 @@ export class OrdersService {
     return { counts, total };
   }
 
-  async create(userId: number, dto: CreateOrderDto): Promise<Order> {
-    return this.createOrder(userId, dto);
+  async getCustomerOverview(userId: number) {
+    const orderRepo = this.dataSource.getRepository(Order);
+
+    const [totalOrders, pendingOrders] = await Promise.all([
+      orderRepo.count({ where: { user: { id: userId } } }),
+      orderRepo.count({
+        where: { user: { id: userId }, status: OrderStatus.PENDING },
+      }),
+    ]);
+
+    const mostBought = await orderRepo
+      .createQueryBuilder('order')
+      .innerJoin('order.items', 'item')
+      .leftJoin('item.product', 'product')
+      .where('order.userId = :userId', { userId })
+      .select('COALESCE(product.id, item.productId)', 'productId')
+      .addSelect('COALESCE(product.name, item.productName)', 'productName')
+      .addSelect('product.imageUrl', 'imageUrl')
+      .addSelect('SUM(item.quantity)', 'quantity')
+      .groupBy('productId')
+      .addGroupBy('productName')
+      .addGroupBy('product.imageUrl')
+      .orderBy('quantity', 'DESC')
+      .limit(1)
+      .getRawOne<{
+        productId: number | null;
+        productName: string | null;
+        imageUrl: string | null;
+        quantity: string;
+      }>();
+
+    const chartRows = await orderRepo
+      .createQueryBuilder('order')
+      .innerJoin('order.items', 'item')
+      .leftJoin('item.product', 'product')
+      .where('order.userId = :userId', { userId })
+      .andWhere('order.status = :status', { status: OrderStatus.APPROVED })
+      .select('COALESCE(product.id, item.productId)', 'productId')
+      .addSelect('COALESCE(product.name, item.productName)', 'productName')
+      .addSelect('product.imageUrl', 'imageUrl')
+      .addSelect('SUM(item.quantity)', 'quantity')
+      .groupBy('productId')
+      .addGroupBy('productName')
+      .addGroupBy('product.imageUrl')
+      .orderBy('quantity', 'DESC')
+      .getRawMany<{
+        productId: number | null;
+        productName: string | null;
+        imageUrl: string | null;
+        quantity: string;
+      }>();
+
+    const orderRows = await orderRepo
+      .createQueryBuilder('order')
+      .where('order.userId = :userId', { userId })
+      .select('order.id', 'id')
+      .orderBy('order.createdAt', 'DESC')
+      .limit(CUSTOMER_OVERVIEW_LIMIT)
+      .getRawMany<{ id: number }>();
+
+    const orderIds = orderRows.map((row) => row.id);
+    const orders =
+      orderIds.length > 0
+        ? await orderRepo.find({
+            where: orderIds.map((id) => ({ id })),
+            relations: ['items', 'items.product'],
+            order: { createdAt: 'DESC' },
+          })
+        : [];
+
+    const recentOrders = orders.map((order) => ({
+      id: order.id,
+      status: order.status,
+      createdAt: order.createdAt,
+      totalAmount: Number(order.totalAmount),
+      itemCount: order.items?.length ?? 0,
+      items:
+        order.items?.map((item) => ({
+          productName: item.productName,
+          quantity: item.quantity,
+          imageUrl: item.product?.imageUrl ?? null,
+        })) ?? [],
+    }));
+
+    return {
+      stats: {
+        totalOrders,
+        pendingOrders,
+        mostBought: mostBought?.productName
+          ? {
+              productId: mostBought.productId,
+              productName: mostBought.productName,
+              imageUrl: mostBought.imageUrl ?? null,
+              quantity: Number(mostBought.quantity),
+            }
+          : null,
+      },
+      orders: recentOrders,
+      chart: chartRows.map((row) => ({
+        productId: row.productId,
+        productName: row.productName ?? 'Unknown product',
+        imageUrl: row.imageUrl ?? null,
+        quantity: Number(row.quantity),
+      })),
+    };
   }
 
-  async createForUser(userId: number, dto: CreateOrderDto): Promise<Order> {
-    return this.createOrder(userId, dto);
+  async create(
+    userId: number,
+    dto: CreateOrderDto,
+    receipt?: { buffer: Buffer; filename?: string },
+  ): Promise<Order> {
+    return this.createOrder(userId, dto, receipt);
   }
 
-  private async createOrder(userId: number, dto: CreateOrderDto): Promise<Order> {
+  async createForUser(
+    userId: number,
+    dto: CreateOrderDto,
+    receipt?: { buffer: Buffer; filename?: string },
+  ): Promise<Order> {
+    return this.createOrder(userId, dto, receipt);
+  }
+
+  private async createOrder(
+    userId: number,
+    dto: CreateOrderDto,
+    receipt?: { buffer: Buffer; filename?: string },
+  ): Promise<Order> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('User not found');
+    }
+
+    let receiptUrl: string | undefined;
+    if (receipt?.buffer?.length) {
+      receiptUrl = await this.receiptStorage.save(receipt.buffer, receipt.filename);
     }
 
     const queryRunner = this.dataSource.createQueryRunner();
@@ -87,6 +215,9 @@ export class OrdersService {
       const order = new Order();
       order.user = user;
       order.shippingAddress = dto.shippingAddress;
+      if (receiptUrl) {
+        order.receiptUrl = receiptUrl;
+      }
 
       for (const itemDto of dto.items) {
         const product = await queryRunner.manager.findOne(Product, {
@@ -137,6 +268,11 @@ export class OrdersService {
       return reloaded;
     } catch (error) {
       await queryRunner.rollbackTransaction();
+      if (receiptUrl) {
+        this.receiptStorage.delete(receiptUrl).catch((cleanupError) => {
+          console.error('Failed to cleanup receipt after order rollback', cleanupError);
+        });
+      }
       throw error;
     } finally {
       await queryRunner.release();
@@ -217,5 +353,33 @@ export class OrdersService {
     } finally {
       await queryRunner.release();
     }
+  }
+
+  async updateReceipt(
+    orderId: number,
+    receipt: { buffer: Buffer; filename?: string },
+  ): Promise<Order> {
+    const orderRepo = this.dataSource.getRepository(Order);
+    const existing = await orderRepo.findOne({ where: { id: orderId } });
+    if (!existing) {
+      throw new NotFoundException('Order not found');
+    }
+
+    const receiptUrl = await this.receiptStorage.save(receipt.buffer, receipt.filename);
+    const previous = existing.receiptUrl;
+    existing.receiptUrl = receiptUrl;
+    await orderRepo.save(existing);
+
+    if (previous && previous !== receiptUrl) {
+      this.receiptStorage.delete(previous).catch((error) => {
+        console.error('Failed to cleanup previous receipt', error);
+      });
+    }
+
+    const reloaded = await orderRepo.findOne({
+      where: { id: orderId },
+      relations: ['user', 'items'],
+    });
+    return reloaded ?? existing;
   }
 }

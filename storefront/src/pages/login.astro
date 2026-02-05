@@ -1,0 +1,17 @@
+---
+import Layout from "../layouts/Layout.astro";
+import AuthLogin from "@/features/auth/components/AuthLogin";
+import { API_BASE, PUBLIC_TELEGRAM_BOT_NAME } from "@/config/env";
+---
+
+<Layout
+  title="Login"
+  showNavbar={false}
+  mainClass="min-h-screen flex items-center justify-center px-4 py-16"
+>
+  <AuthLogin
+    client:only="react"
+    apiBase={API_BASE}
+    telegramBot={PUBLIC_TELEGRAM_BOT_NAME}
+  />
+</Layout>

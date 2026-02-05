@@ -27,11 +27,13 @@ export class BotUpdate {
       orderId,
       OrderStatus.APPROVED,
     );
-    await this.botService.notifyUserStatusChange(
-      order.user.telegramId,
-      orderId,
-      'APPROVED',
-    );
+    if (order.user.telegramId) {
+      await this.botService.notifyUserStatusChange(
+        order.user.telegramId,
+        orderId,
+        'APPROVED',
+      );
+    }
 
     await ctx.editMessageText(
       `✅ <b>Order #${orderId} Approved</b>\nProcessed by: @${ctx.from?.username ?? 'unknown'}`,
@@ -55,11 +57,13 @@ export class BotUpdate {
       orderId,
       OrderStatus.REJECTED,
     );
-    await this.botService.notifyUserStatusChange(
-      order.user.telegramId,
-      orderId,
-      'REJECTED',
-    );
+    if (order.user.telegramId) {
+      await this.botService.notifyUserStatusChange(
+        order.user.telegramId,
+        orderId,
+        'REJECTED',
+      );
+    }
 
     await ctx.editMessageText(`❌ <b>Order #${orderId} Rejected</b>`, {
       parse_mode: 'HTML',

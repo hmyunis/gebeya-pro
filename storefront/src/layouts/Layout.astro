@@ -1,0 +1,49 @@
+---
+import "../styles/global.css";
+import Navbar from "@/features/navigation/components/Navbar";
+import Footer from "@/features/footer/components/Footer";
+import Toasts from "@/app/Toasts";
+import AuthBootstrap from "@/features/auth/components/AuthBootstrap";
+
+interface Props {
+  title: string;
+  showNavbar?: boolean;
+  showNavbarCart?: boolean;
+  mainClass?: string;
+}
+
+const {
+  title,
+  showNavbar = true,
+  showNavbarCart = true,
+  mainClass = "max-w-7xl mx-auto px-4 pt-28 pb-16",
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <title>Gebeya Pro | {title}</title>
+  </head>
+  <body>
+    <div class="pointer-events-none fixed inset-0 -z-10">
+      <div class="absolute -top-32 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(15,42,77,0.18)_0%,rgba(15,42,77,0)_70%)] blur-2xl"></div>
+      <div class="absolute bottom-10 -right-30 h-80 w-80 rounded-full bg-[radial-gradient(circle,rgba(30,27,75,0.2)_0%,rgba(30,27,75,0)_70%)] blur-3xl"></div>
+    </div>
+    <Toasts client:load />
+    <AuthBootstrap client:load />
+    {showNavbar ? <Navbar client:load showCartButton={showNavbarCart} /> : null}
+    <main class={mainClass}>
+      <slot />
+    </main>
+    <Footer client:load />
+  </body>
+</html>

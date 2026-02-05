@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Card, CardHeader, CardBody, addToast } from "@heroui/react";
-import { api } from "../../lib/api";
+import { api, clearAuthToken, setAuthToken } from "../../lib/api";
 import { useNavigate } from "react-router-dom";
 import { Package } from "@phosphor-icons/react";
 
@@ -35,7 +35,27 @@ export default function LoginPage() {
         });
 
         // 2. Send to Backend
-        await api.post("/auth/telegram", user);
+        const response = await api.post("/auth/telegram", user);
+        const role = response?.data?.user?.role;
+        const token = response?.data?.token as string | undefined;
+        if (role !== "admin") {
+          clearAuthToken();
+          await api.post("/auth/logout");
+          addToast({
+            title: "Access denied",
+            description: "Only admins can access this dashboard.",
+            color: "danger",
+          });
+          return;
+        }
+
+        if (!token) {
+          throw new Error("Missing auth token in /auth/telegram response");
+        }
+
+        // Fallback for environments where cross-site cookies are blocked:
+        // keep the JWT in sessionStorage and send it as a Bearer token.
+        setAuthToken(token);
 
         addToast({
           title: "Success",

@@ -28,6 +28,9 @@ export class Order extends AbstractEntity {
   @Column({ type: 'text', nullable: true })
   shippingAddress: string;
 
+  @Column({ type: 'varchar', length: 512, nullable: true })
+  receiptUrl: string;
+
   @Column({ nullable: true })
   adminNote: string;
 }

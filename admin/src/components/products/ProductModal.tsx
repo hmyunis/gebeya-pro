@@ -28,6 +28,12 @@ export default function ProductModal({ isOpen, onClose, product }: ProductModalP
   const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
+  const [name, setName] = useState("");
+  const [price, setPrice] = useState("");
+  const [stock, setStock] = useState("");
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [description, setDescription] = useState("");
+  const [hasImage, setHasImage] = useState(false);
 
   const { data: categoriesResponse } = useQuery<PaginatedResponse<Category>>({
     queryKey: ['categories', 'select-options'],
@@ -97,6 +103,9 @@ export default function ProductModal({ isOpen, onClose, product }: ProductModalP
     const file = e.target.files?.[0];
     if (file) {
       setPreview(URL.createObjectURL(file));
+      setHasImage(true);
+    } else if (!product) {
+      setHasImage(false);
     }
   };
 
@@ -107,12 +116,36 @@ export default function ProductModal({ isOpen, onClose, product }: ProductModalP
     } else {
       setPreview(null);
     }
+    setHasImage(Boolean(product?.imageUrl));
+    setName(product?.name ?? "");
+    setPrice(product?.price !== undefined ? String(product.price) : "");
+    setStock(product?.stock !== undefined ? String(product.stock) : "");
+    setCategoryId(product?.category?.id ? String(product.category.id) : null);
+    setDescription(product?.description ?? "");
   }, [isOpen, product]);
 
   const defaultCategoryKey = useMemo(() => {
     if (!product?.category?.id) return undefined;
     return new Set([String(product.category.id)]);
   }, [product]);
+
+  const isFormValid = useMemo(() => {
+    const hasBasics =
+      name.trim().length > 0 &&
+      price.trim().length > 0 &&
+      stock.trim().length > 0 &&
+      description.trim().length > 0;
+    const hasCategory = Boolean(categoryId);
+    const hasRequiredImage = product ? true : hasImage;
+    return hasBasics && hasCategory && hasRequiredImage;
+  }, [categoryId, description, hasImage, name, price, product, stock]);
+
+  const requiredLabel = (label: string) => (
+    <span className="inline-flex items-center gap-1">
+      <span>{label}</span>
+      <span className="text-danger" aria-hidden="true">*</span>
+    </span>
+  );
 
   return (
     <Modal
@@ -148,47 +181,58 @@ export default function ProductModal({ isOpen, onClose, product }: ProductModalP
                 </div>
                 <p className="text-center text-xs text-default-400 mt-2">
                   {product ? "Change image" : "Upload image"} (Max 25MB)
+                  {!product ? (
+                    <span className="text-danger" aria-hidden="true"> *</span>
+                  ) : null}
                 </p>
               </div>
 
               {/* Inputs Section - Takes remaining width */}
               <div className="flex-1 flex flex-col gap-4">
                 <Input
-                  label="Product Name"
+                  label={requiredLabel("Product Name")}
                   name="name"
-                  required={!product}
-                  defaultValue={product?.name}
+                  required
+                  value={name}
+                  onValueChange={setName}
                   placeholder="e.g. iPhone 15"
                 />
 
                 <div className="flex flex-col gap-4 sm:flex-row">
                   <Input
                     type="number"
-                    label="Price"
+                    label={requiredLabel("Price")}
                     name="price"
-                    required={!product}
+                    required
                     endContent="Birr"
                     step="0.01"
-                    defaultValue={product?.price !== undefined ? String(product.price) : undefined}
+                    value={price}
+                    onValueChange={setPrice}
                     className="flex-1"
                   />
                   <Input
                     type="number"
-                    label="Stock"
+                    label={requiredLabel("Stock")}
                     name="stock"
-                    required={!product}
+                    required
                     placeholder="10"
-                    defaultValue={product?.stock !== undefined ? String(product.stock) : undefined}
+                    value={stock}
+                    onValueChange={setStock}
                     className="flex-1"
                   />
                 </div>
 
                 <Select
-                  label="Category"
+                  label={requiredLabel("Category")}
                   name="categoryId"
-                  required={!product}
+                  required
                   placeholder="Select a category"
                   defaultSelectedKeys={defaultCategoryKey}
+                  selectedKeys={categoryId ? new Set([categoryId]) : new Set([])}
+                  onSelectionChange={(keys) => {
+                    const selected = Array.from(keys)[0];
+                    setCategoryId(selected ? String(selected) : null);
+                  }}
                 >
                   {categories.map((cat) => (
                     <SelectItem key={String(cat.id)} textValue={cat.name}>
@@ -198,10 +242,12 @@ export default function ProductModal({ isOpen, onClose, product }: ProductModalP
                 </Select>
 
                 <Textarea
-                  label="Description"
+                  label={requiredLabel("Description")}
                   name="description"
+                  required
                   placeholder="Product details..."
-                  defaultValue={product?.description}
+                  value={description}
+                  onValueChange={setDescription}
                   minRows={3}
                 />
               </div>
@@ -219,6 +265,7 @@ export default function ProductModal({ isOpen, onClose, product }: ProductModalP
             type="submit"
             form="product-form"
             isLoading={isLoading}
+            isDisabled={!isFormValid || isLoading}
             startContent={<Check className="h-4 w-4" />}
           >
             {actionLabel}

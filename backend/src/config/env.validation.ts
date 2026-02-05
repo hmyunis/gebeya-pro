@@ -12,9 +12,12 @@ export const envSchema = z.object({
   DB_USERNAME: z.string(),
   DB_PASSWORD: z.string(),
   DB_NAME: z.string(),
+  DB_SYNC: z.coerce.boolean().optional(),
+  RUN_MIGRATIONS: z.coerce.boolean().optional(),
 
   // Security
   JWT_SECRET: z.string().min(10),
+  PASSWORD_PEPPER: z.string().optional(),
 
   // Telegram
   TELEGRAM_BOT_TOKEN: z.string(),

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { useIsFetching, useQuery } from "@tanstack/react-query";
-import { api } from "../lib/api";
+import { api, clearAuthToken } from "../lib/api";
 import {
   Navbar,
   NavbarContent,
@@ -15,7 +15,7 @@ import {
   Tooltip,
 } from "@heroui/react";
 import { Drawer, DrawerBody, DrawerContent, DrawerHeader } from "@heroui/drawer";
-import { CaretDown, House, Package, ShoppingCart, SignOut, UserCircle, FileText, List, SidebarSimple } from "@phosphor-icons/react";
+import { CaretDown, House, Package, ShoppingCart, SignOut, UserCircle, FileText, List, SidebarSimple, Bank } from "@phosphor-icons/react";
 import { cn } from "../lib/utils";
 
 export default function DashboardLayout() {
@@ -38,6 +38,7 @@ export default function DashboardLayout() {
     { name: "Dashboard", path: "/", icon: <House className="h-5 w-5" /> },
     { name: "Orders", path: "/orders", icon: <ShoppingCart className="h-5 w-5" /> },
     { name: "Products", path: "/products", icon: <Package className="h-5 w-5" /> },
+    { name: "Bank Accounts", path: "/bank-accounts", icon: <Bank className="h-5 w-5" /> },
     { name: "Activity Logs", path: "/activity-logs", icon: <FileText className="h-5 w-5" /> },
   ];
 
@@ -71,6 +72,7 @@ export default function DashboardLayout() {
 
   const handleLogout = async () => {
     await api.post('/auth/logout');
+    clearAuthToken();
     window.location.href = '/login';
   };
 

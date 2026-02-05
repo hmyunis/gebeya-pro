@@ -11,6 +11,8 @@ import { OrdersModule } from './modules/orders/orders.module';
 import { BotModule } from './modules/bot/bot.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { AuditModule } from './modules/audit/audit.module';
+import { PaymentsModule } from './modules/payments/payments.module';
+import { ContactModule } from './modules/contact/contact.module';
 
 @Module({
   imports: [
@@ -43,6 +45,8 @@ import { AuditModule } from './modules/audit/audit.module';
     OrdersModule,
     BotModule,
     AdminModule,
+    PaymentsModule,
+    ContactModule,
   ],
   controllers: [],
   providers: [],

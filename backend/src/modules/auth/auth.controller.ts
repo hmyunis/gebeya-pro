@@ -10,6 +10,9 @@ import {
 import { type FastifyReply } from 'fastify';
 import { AuthService } from './auth.service';
 import { TelegramLoginDto } from './dto/telegram-login.dto';
+import { PasswordLoginDto } from './dto/password-login.dto';
+import { PasswordRegisterDto } from './dto/password-register.dto';
+import { SetPasswordDto } from './dto/set-password.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -48,12 +51,86 @@ export class AuthController {
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     });
 
-    return { user };
+    return { user, token };
+  }
+
+  @Post('password')
+  async loginWithPassword(
+    @Body() dto: PasswordLoginDto,
+    @Res({ passthrough: true }) res: FastifyReply,
+  ) {
+    const { user, token } = await this.authService.loginWithPassword(dto);
+
+    const cookieSameSite =
+      (process.env.COOKIE_SAMESITE as 'lax' | 'strict' | 'none') ?? 'lax';
+    const cookieSecure =
+      process.env.COOKIE_SECURE !== undefined
+        ? process.env.COOKIE_SECURE === 'true'
+        : process.env.NODE_ENV === 'production';
+
+    res.setCookie('jwt', token, {
+      httpOnly: true,
+      secure: cookieSecure,
+      sameSite: cookieSameSite,
+      path: '/',
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
+
+    return { user, token };
+  }
+
+  @Post('register/password')
+  async registerWithPassword(
+    @Body() dto: PasswordRegisterDto,
+    @Res({ passthrough: true }) res: FastifyReply,
+  ) {
+    const { user, token } = await this.authService.registerWithPassword(dto);
+
+    const cookieSameSite =
+      (process.env.COOKIE_SAMESITE as 'lax' | 'strict' | 'none') ?? 'lax';
+    const cookieSecure =
+      process.env.COOKIE_SECURE !== undefined
+        ? process.env.COOKIE_SECURE === 'true'
+        : process.env.NODE_ENV === 'production';
+
+    res.setCookie('jwt', token, {
+      httpOnly: true,
+      secure: cookieSecure,
+      sameSite: cookieSameSite,
+      path: '/',
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
+
+    return { user, token };
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Post('password/set')
+  async setPassword(@Req() req, @Body() dto: SetPasswordDto) {
+    return this.authService.setPasswordForUser(req.user.userId, dto);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Post('telegram/link')
+  async linkTelegram(@Req() req, @Body() telegramData: TelegramLoginDto) {
+    return this.authService.linkTelegramToUser(req.user.userId, telegramData);
   }
 
   @Post('logout')
   async logout(@Res({ passthrough: true }) res: FastifyReply) {
-    res.clearCookie('jwt');
+    const cookieSameSite =
+      (process.env.COOKIE_SAMESITE as 'lax' | 'strict' | 'none') ?? 'lax';
+    const cookieSecure =
+      process.env.COOKIE_SECURE !== undefined
+        ? process.env.COOKIE_SECURE === 'true'
+        : process.env.NODE_ENV === 'production';
+
+    res.clearCookie('jwt', {
+      httpOnly: true,
+      secure: cookieSecure,
+      sameSite: cookieSameSite,
+      path: '/',
+    });
     return { message: 'Logged out' };
   }
 
@@ -73,6 +150,8 @@ export class AuthController {
       firstName: user.firstName,
       username: user.username,
       avatarUrl: user.avatarUrl,
+      loginUsername: user.loginUsername,
+      hasTelegram: Boolean(user.telegramId),
     };
   }
 }

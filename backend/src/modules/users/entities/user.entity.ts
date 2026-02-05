@@ -10,8 +10,23 @@ export enum UserRole {
 export class User extends AbstractEntity {
   // Telegram ID is unique and crucial for login
   @Index({ unique: true })
-  @Column({ type: 'bigint' })
-  telegramId: string;
+  @Column({ type: 'bigint', nullable: true })
+  telegramId: string | null;
+
+  // Optional username used for password-based login (case-insensitive; store normalized/lowercase)
+  @Index({ unique: true })
+  @Column({ type: 'varchar', length: 32, nullable: true })
+  loginUsername: string | null;
+
+  // Password hash for local login. Never select by default.
+  @Column({ type: 'varchar', length: 255, nullable: true, select: false })
+  passwordHash: string | null;
+
+  @Column({ type: 'int', default: 0, select: false })
+  passwordLoginFailedAttempts: number;
+
+  @Column({ type: 'datetime', nullable: true, select: false })
+  passwordLoginLockedUntil: Date | null;
 
   @Column({ nullable: true })
   firstName: string;

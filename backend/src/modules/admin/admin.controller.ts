@@ -63,6 +63,9 @@ export class AdminController {
 
     let count = 0;
     for (const user of users) {
+      if (!user.telegramId) {
+        continue;
+      }
       await this.botService.notifyUser(user.telegramId, dto.message);
       count += 1;
     }

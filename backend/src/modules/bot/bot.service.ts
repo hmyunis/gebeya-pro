@@ -3,6 +3,8 @@ import { InjectBot } from 'nestjs-telegraf';
 import { Context, Telegraf, Markup } from 'telegraf';
 import { ConfigService } from '@nestjs/config';
 import { Order } from '../orders/entities/order.entity';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class BotService {
@@ -42,6 +44,7 @@ export class BotService {
 👤 User: ${order.user.firstName} (@${order.user.username || 'N/A'})
 💰 Total: ${formattedTotal} Birr
 📍 Address: ${order.shippingAddress}
+${order.receiptUrl ? '🧾 Receipt: attached below' : '🧾 Receipt: (none)'}
 
 <i>Items:</i>
 ${itemsList}
@@ -56,6 +59,27 @@ ${itemsList}
         ],
       ]),
     });
+
+    const receiptFilePath = this.resolveReceiptFilePath(order.receiptUrl);
+    if (!receiptFilePath) {
+      return;
+    }
+
+    try {
+      await this.bot.telegram.sendDocument(
+        adminId,
+        {
+          source: fs.createReadStream(receiptFilePath),
+          filename: path.basename(receiptFilePath),
+        },
+        {
+          caption: `🧾 Receipt for Order #${order.id}`,
+        },
+      );
+    } catch (error) {
+      const err = error as Error;
+      this.logger.warn(`Failed to send receipt for order #${order.id}: ${err.message}`);
+    }
   }
 
   async notifyUserStatusChange(
@@ -79,5 +103,17 @@ ${itemsList}
       const err = error as Error;
       this.logger.warn(`Failed to send to ${telegramId}: ${err.message}`);
     }
+  }
+
+  private resolveReceiptFilePath(receiptUrl: string | null | undefined): string | null {
+    if (!receiptUrl) return null;
+    if (!receiptUrl.startsWith('/uploads/receipts/')) return null;
+
+    const relative = receiptUrl.replace(/^\//, '');
+    const resolved = path.resolve(process.cwd(), relative);
+    const allowedRoot = path.resolve(process.cwd(), 'uploads', 'receipts') + path.sep;
+    if (!resolved.startsWith(allowedRoot)) return null;
+    if (!fs.existsSync(resolved)) return null;
+    return resolved;
   }
 }

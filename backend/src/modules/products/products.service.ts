@@ -1,17 +1,27 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Like, Repository } from 'typeorm';
+import { Repository, SelectQueryBuilder } from 'typeorm';
 import slugify from 'slugify';
 import { Product } from './entities/product.entity';
+import { Category } from './entities/category.entity';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ImageService } from './image.service';
+
+type ProductFilters = {
+  query?: string;
+  categoryIds?: number[];
+  minPrice?: number;
+  maxPrice?: number;
+};
 
 @Injectable()
 export class ProductsService {
   constructor(
     @InjectRepository(Product)
     private readonly productRepo: Repository<Product>,
+    @InjectRepository(Category)
+    private readonly categoryRepo: Repository<Category>,
     private readonly imageService: ImageService,
   ) {}
 
@@ -43,6 +53,122 @@ export class ProductsService {
       order: { createdAt: 'DESC' },
       relations: ['category'],
     });
+  }
+
+  private applyFilters(
+    qb: SelectQueryBuilder<Product>,
+    filters: ProductFilters,
+  ) {
+    const normalizedQuery = filters.query?.trim().toLowerCase() ?? '';
+    if (normalizedQuery.length > 0) {
+      qb.andWhere(
+        '(LOWER(product.name) LIKE :q OR LOWER(COALESCE(product.description, \'\')) LIKE :q)',
+        { q: `%${normalizedQuery}%` },
+      );
+    }
+
+    if (filters.categoryIds && filters.categoryIds.length > 0) {
+      qb.andWhere('product.categoryId IN (:...categoryIds)', {
+        categoryIds: filters.categoryIds,
+      });
+    }
+
+    if (typeof filters.minPrice === 'number') {
+      qb.andWhere('product.price >= :minPrice', { minPrice: filters.minPrice });
+    }
+
+    if (typeof filters.maxPrice === 'number') {
+      qb.andWhere('product.price <= :maxPrice', { maxPrice: filters.maxPrice });
+    }
+  }
+
+  private buildPriceRanges(minRaw: unknown, maxRaw: unknown) {
+    const min = Number(minRaw);
+    const max = Number(maxRaw);
+    if (!Number.isFinite(min) || !Number.isFinite(max)) {
+      return [];
+    }
+
+    if (min === max) {
+      return [
+        {
+          id: 'range-1',
+          min,
+          max,
+        },
+      ];
+    }
+
+    const step = (max - min) / 5;
+    return new Array(5).fill(0).map((_, idx) => {
+      const start = idx === 0 ? min : min + step * idx;
+      const end = idx === 4 ? max : min + step * (idx + 1);
+      const roundedStart = Math.round(start);
+      const roundedEnd = Math.round(end);
+      return {
+        id: `range-${idx + 1}`,
+        min: roundedStart,
+        max: roundedEnd,
+      };
+    });
+  }
+
+  async findFilteredPaginated(
+    filters: ProductFilters,
+    page: number,
+    limit: number,
+  ) {
+    const rangeQuery = this.productRepo
+      .createQueryBuilder('product')
+      .leftJoin('product.category', 'category')
+      .select('MIN(product.price)', 'min')
+      .addSelect('MAX(product.price)', 'max');
+
+    this.applyFilters(rangeQuery, {
+      query: filters.query,
+      categoryIds: filters.categoryIds,
+    });
+
+    const rangeRow = await rangeQuery.getRawOne();
+    const priceRanges = this.buildPriceRanges(rangeRow?.min, rangeRow?.max);
+
+    const query = this.productRepo
+      .createQueryBuilder('product')
+      .leftJoinAndSelect('product.category', 'category')
+      .orderBy('product.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    this.applyFilters(query, filters);
+
+    const [data, total] = await query.getManyAndCount();
+    return { data, total, priceRanges };
+  }
+
+  async getFilterOptions(filters: ProductFilters) {
+    const rangeQuery = this.productRepo
+      .createQueryBuilder('product')
+      .select('MIN(product.price)', 'min')
+      .addSelect('MAX(product.price)', 'max');
+
+    this.applyFilters(rangeQuery, {
+      query: filters.query,
+      categoryIds: filters.categoryIds,
+    });
+
+    const [rangeRow, categories] = await Promise.all([
+      rangeQuery.getRawOne(),
+      this.categoryRepo
+        .createQueryBuilder('category')
+        .loadRelationCountAndMap('category.productCount', 'category.products')
+        .orderBy('category.createdAt', 'DESC')
+        .getMany(),
+    ]);
+
+    return {
+      categories,
+      priceRanges: this.buildPriceRanges(rangeRow?.min, rangeRow?.max),
+    };
   }
 
   async findAllPaginated(page: number, limit: number) {
@@ -96,17 +222,7 @@ export class ProductsService {
   }
 
   async searchPaginated(query: string, page: number, limit: number) {
-    const [data, total] = await this.productRepo.findAndCount({
-      where: [
-        { name: Like(`%${query}%`) },
-        { description: Like(`%${query}%`) },
-      ],
-      relations: ['category'],
-      skip: (page - 1) * limit,
-      take: limit,
-    });
-
-    return { data, total };
+    return this.findFilteredPaginated({ query }, page, limit);
   }
 
   async remove(id: number): Promise<void> {

@@ -1,8 +1,16 @@
-import { useEffect, useRef } from "react";
-import { Card, CardHeader, CardBody, addToast } from "@heroui/react";
-import { api, clearAuthToken, setAuthToken } from "../../lib/api";
+import { useEffect, useRef, useState } from "react";
+import {
+  Button,
+  Card,
+  CardBody,
+  CardHeader,
+  Divider,
+  Input,
+  addToast,
+} from "@heroui/react";
 import { useNavigate } from "react-router-dom";
-import { Package } from "@phosphor-icons/react";
+import { Package, SignIn } from "@phosphor-icons/react";
+import { api, clearAuthToken, setAuthToken } from "../../lib/api";
 
 interface TelegramUser {
   id: number;
@@ -19,14 +27,19 @@ declare global {
   }
 }
 
+const isStaffRole = (role: string | undefined) =>
+  role === "admin" || role === "merchant";
+
 export default function LoginPage() {
   const telegramWrapperRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [isPasswordLoading, setIsPasswordLoading] = useState(false);
 
   useEffect(() => {
     const botName = import.meta.env.VITE_TELEGRAM_BOT_NAME as string | undefined;
 
-    // 1. Create the global callback function
     window.onTelegramAuth = async (user) => {
       try {
         addToast({
@@ -34,16 +47,16 @@ export default function LoginPage() {
           description: "Verifying with server",
         });
 
-        // 2. Send to Backend
         const response = await api.post("/auth/telegram", user);
-        const role = response?.data?.user?.role;
+        const role = response?.data?.user?.role as string | undefined;
         const token = response?.data?.token as string | undefined;
-        if (role !== "admin") {
+
+        if (!isStaffRole(role)) {
           clearAuthToken();
           await api.post("/auth/logout");
           addToast({
             title: "Access denied",
-            description: "Only admins can access this dashboard.",
+            description: "Only admins and merchants can access this dashboard.",
             color: "danger",
           });
           return;
@@ -53,22 +66,17 @@ export default function LoginPage() {
           throw new Error("Missing auth token in /auth/telegram response");
         }
 
-        // Fallback for environments where cross-site cookies are blocked:
-        // keep the JWT in sessionStorage and send it as a Bearer token.
         setAuthToken(token);
-
         addToast({
           title: "Success",
           description: "Logged in successfully",
           color: "success",
         });
-
-        // 3. Redirect
         navigate("/");
       } catch (error) {
         console.error(error);
         addToast({
-          title: "Login Failed",
+          title: "Login failed",
           description: "Could not verify Telegram credentials.",
           color: "danger",
         });
@@ -80,7 +88,6 @@ export default function LoginPage() {
       return;
     }
 
-    // 4. Inject the Telegram Script
     const script = document.createElement("script");
     script.src = "https://telegram.org/js/telegram-widget.js?22";
     script.setAttribute("data-telegram-login", botName);
@@ -94,6 +101,60 @@ export default function LoginPage() {
     }
   }, [navigate]);
 
+  const loginWithPassword = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (username.trim().length < 3 || password.length < 8) {
+      addToast({
+        title: "Invalid credentials",
+        description: "Username or password is too short.",
+        color: "warning",
+      });
+      return;
+    }
+
+    setIsPasswordLoading(true);
+    try {
+      const response = await api.post("/auth/password", {
+        username: username.trim(),
+        password,
+      });
+      const role = response?.data?.user?.role as string | undefined;
+      const token = response?.data?.token as string | undefined;
+
+      if (!isStaffRole(role)) {
+        clearAuthToken();
+        await api.post("/auth/logout");
+        addToast({
+          title: "Access denied",
+          description: "Only admins and merchants can access this dashboard.",
+          color: "danger",
+        });
+        return;
+      }
+
+      if (!token) {
+        throw new Error("Missing auth token in /auth/password response");
+      }
+
+      setAuthToken(token);
+      addToast({
+        title: "Success",
+        description: "Logged in successfully",
+        color: "success",
+      });
+      navigate("/");
+    } catch (error: any) {
+      addToast({
+        title: "Login failed",
+        description:
+          error?.response?.data?.message || "Invalid username or password.",
+        color: "danger",
+      });
+    } finally {
+      setIsPasswordLoading(false);
+    }
+  };
+
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-linear-to-br from-blue-800 via-indigo-900 to-slate-950 px-4 py-10">
       <Card className="w-full max-w-md p-2">
@@ -101,17 +162,50 @@ export default function LoginPage() {
           <div className="size-12 flex items-center justify-center rounded-lg bg-linear-to-r from-blue-500 via-indigo-500 to-slate-500 shrink-0">
             <Package className="size-8 text-white" />
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Admin Login</h1>
-          <p className="text-sm text-slate-500">Secure access to your store dashboard</p>
-        </CardHeader>
-        <CardBody className="flex flex-col items-center justify-center gap-4 py-2">
-          <div
-            ref={telegramWrapperRef}
-            className="flex w-full justify-center px-3 py-4"
-          />
-          <p className="text-xs text-slate-400">
-            Only verified admins can access this panel.
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+            Staff Login
+          </h1>
+          <p className="text-sm text-slate-500">
+            Admin and merchant access to the dashboard
           </p>
+        </CardHeader>
+
+        <CardBody className="flex flex-col gap-4 py-2">
+          <div ref={telegramWrapperRef} className="flex w-full justify-center px-3 py-2" />
+
+          <div className="px-2">
+            <Divider />
+          </div>
+
+          <form className="space-y-3 px-2" onSubmit={loginWithPassword}>
+            <Input
+              type="text"
+              label="Username"
+              placeholder="merchant_username"
+              value={username}
+              onValueChange={setUsername}
+              autoComplete="username"
+              isRequired
+            />
+            <Input
+              type="password"
+              label="Password"
+              placeholder="••••••••"
+              value={password}
+              onValueChange={setPassword}
+              autoComplete="current-password"
+              isRequired
+            />
+            <Button
+              type="submit"
+              color="primary"
+              className="w-full"
+              isLoading={isPasswordLoading}
+              startContent={<SignIn className="h-4 w-4" />}
+            >
+              Login with password
+            </Button>
+          </form>
         </CardBody>
       </Card>
     </div>

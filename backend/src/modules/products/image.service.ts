@@ -29,11 +29,27 @@ export class ImageService {
     return `/uploads/products/${filename}`;
   }
 
+  async optimizeAndSaveMany(fileBuffers: Buffer[]): Promise<string[]> {
+    const savedPaths: string[] = [];
+    for (const fileBuffer of fileBuffers) {
+      const savedPath = await this.optimizeAndSave(fileBuffer);
+      savedPaths.push(savedPath);
+    }
+    return savedPaths;
+  }
+
   async deleteImage(relativePath: string): Promise<void> {
     if (!relativePath) return;
     const fullPath = path.join(process.cwd(), relativePath);
     if (await fs.pathExists(fullPath)) {
       await fs.remove(fullPath);
+    }
+  }
+
+  async deleteImages(relativePaths: string[]): Promise<void> {
+    const uniquePaths = [...new Set(relativePaths.filter(Boolean))];
+    for (const relativePath of uniquePaths) {
+      await this.deleteImage(relativePath);
     }
   }
 }

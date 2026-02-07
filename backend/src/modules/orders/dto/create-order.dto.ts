@@ -1,8 +1,8 @@
 import {
   ArrayMinSize,
   IsArray,
+  IsInt,
   IsNotEmpty,
-  IsNumber,
   IsString,
   Min,
   ValidateNested,
@@ -10,10 +10,13 @@ import {
 import { Type } from 'class-transformer';
 
 class OrderItemDto {
-  @IsNumber()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
   productId: number;
 
-  @IsNumber()
+  @Type(() => Number)
+  @IsInt()
   @Min(1)
   quantity: number;
 }

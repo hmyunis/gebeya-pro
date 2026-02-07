@@ -1,8 +1,9 @@
-import { HeroUIProvider, Navbar, NavbarContent, addToast } from "@heroui/react";
+import { Button, HeroUIProvider, Navbar, NavbarContent, addToast } from "@heroui/react";
 import type { Key } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useStore } from "@nanostores/react";
 import { useMutation } from "@tanstack/react-query";
+import { Store } from "lucide-react";
 
 import { API_BASE } from "@/config/env";
 import { api, getApiErrorMessage } from "@/lib/api";
@@ -49,6 +50,8 @@ function NavbarContentRoot({ showCartButton = true }: { showCartButton?: boolean
   const displayName = useMemo(() => getUserDisplayName(user), [user]);
   const initials = useMemo(() => getInitials(displayName), [displayName]);
   const avatarSrc = useMemo(() => getAvatarSrc(user, API_BASE), [user]);
+  const showBecomeMerchantCta =
+    authReady && String(user?.role ?? "").toLowerCase() !== "merchant";
 
   const openOrderModal = () => {
     setIsCartOpen(false);
@@ -144,7 +147,30 @@ function NavbarContentRoot({ showCartButton = true }: { showCartButton?: boolean
       >
         <Brand />
 
-        <NavbarContent justify="end" className="gap-2">
+        <NavbarContent justify="end" className="gap-1 sm:gap-2">
+          {showBecomeMerchantCta ? (
+            <>
+              <Button
+                as="a"
+                href="/merchant/apply"
+                size="sm"
+                isIconOnly
+                aria-label="Apply as merchant"
+                className="sm:hidden border border-black/10 bg-white/70 text-[#12141a] shadow-[0_12px_30px_-24px_rgba(16,19,25,0.7)]"
+              >
+                <Store className="h-4 w-4" />
+              </Button>
+              <Button
+                as="a"
+                href="/merchant/apply"
+                size="sm"
+                variant="flat"
+                className="hidden sm:inline-flex border border-black/10 bg-white/70 text-[#12141a] shadow-[0_12px_30px_-24px_rgba(16,19,25,0.7)]"
+              >
+                Become a Merchant
+              </Button>
+            </>
+          ) : null}
           {showCartButton ? (
             <CartIconButton count={count} onPress={() => setIsCartOpen(true)} />
           ) : null}

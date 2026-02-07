@@ -8,6 +8,7 @@ import { clearCart } from "@/features/cart/store/cartStore";
 import { clearAuthToken, getAuthToken } from "@/features/auth/utils/token";
 
 export type AuthUser = {
+  role?: string | null;
   firstName?: string | null;
   username?: string | null;
   avatarUrl?: string | null;

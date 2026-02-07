@@ -9,11 +9,15 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { Order, OrderStatus } from './entities/order.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { Product } from '../products/entities/product.entity';
-import { User } from '../users/entities/user.entity';
+import { User, UserRole } from '../users/entities/user.entity';
 import { BotService } from '../bot/bot.service';
 import { ReceiptStorageService } from './receipt-storage.service';
 
 const CUSTOMER_OVERVIEW_LIMIT = 4;
+type StaffActor = {
+  userId: number;
+  role: UserRole;
+};
 
 @Injectable()
 export class OrdersService {
@@ -25,12 +29,24 @@ export class OrdersService {
     private readonly userRepo: Repository<User>,
   ) {}
 
-  async findAllPaginated(page: number, limit: number, status?: OrderStatus) {
+  async findAllPaginated(
+    page: number,
+    limit: number,
+    status: OrderStatus | undefined,
+    actor: StaffActor,
+  ) {
     const orderRepo = this.dataSource.getRepository(Order);
-    const where = status ? { status } : undefined;
+    const where: FindOptionsWhere<Order> = {};
+    if (status) {
+      where.status = status;
+    }
+    if (actor.role === UserRole.MERCHANT) {
+      where.merchant = { id: actor.userId };
+    }
+
     const [data, total] = await orderRepo.findAndCount({
-      where,
-      relations: ['user', 'items'],
+      where: Object.keys(where).length > 0 ? where : undefined,
+      relations: ['user', 'items', 'merchant'],
       order: { createdAt: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,
@@ -66,14 +82,19 @@ export class OrdersService {
     return { data, total };
   }
 
-  async getStatusCounts() {
+  async getStatusCounts(actor: StaffActor) {
     const orderRepo = this.dataSource.getRepository(Order);
-    const rows = await orderRepo
+    const query = orderRepo
       .createQueryBuilder('order')
       .select('order.status', 'status')
       .addSelect('COUNT(order.id)', 'count')
-      .groupBy('order.status')
-      .getRawMany<{ status: OrderStatus; count: string }>();
+      .groupBy('order.status');
+
+    if (actor.role === UserRole.MERCHANT) {
+      query.where('order.merchantId = :merchantId', { merchantId: actor.userId });
+    }
+
+    const rows = await query.getRawMany<{ status: OrderStatus; count: string }>();
 
     const counts: Record<OrderStatus, number> = {
       [OrderStatus.PENDING]: 0,
@@ -240,8 +261,9 @@ export class OrdersService {
     await queryRunner.startTransaction();
 
     try {
-      let totalAmount = 0;
+      let totalAmountCents = 0;
       const orderItems: OrderItem[] = [];
+      let merchantIdForOrder: number | null | undefined;
       const order = new Order();
       order.user = user;
       order.shippingAddress = dto.shippingAddress;
@@ -258,6 +280,26 @@ export class OrdersService {
         if (!product) {
           throw new NotFoundException(`Product ${itemDto.productId} not found`);
         }
+        if (!product.isActive) {
+          throw new BadRequestException(
+            `Product "${product.name}" is currently unavailable`,
+          );
+        }
+        if (product.stock < itemDto.quantity) {
+          throw new BadRequestException(
+            `Insufficient stock for "${product.name}". Available: ${product.stock}`,
+          );
+        }
+
+        const productMerchantId = product.merchantId ?? null;
+        if (merchantIdForOrder === undefined) {
+          merchantIdForOrder = productMerchantId;
+        } else if (merchantIdForOrder !== productMerchantId) {
+          throw new BadRequestException(
+            'All order items must belong to the same merchant',
+          );
+        }
+
         product.stock -= itemDto.quantity;
         await queryRunner.manager.save(product);
 
@@ -268,10 +310,21 @@ export class OrdersService {
         orderItem.quantity = itemDto.quantity;
         orderItems.push(orderItem);
 
-        totalAmount += Number(product.price) * itemDto.quantity;
+        const priceCents = this.toCents(product.price);
+        totalAmountCents += priceCents * itemDto.quantity;
       }
 
-      order.totalAmount = totalAmount;
+      if (merchantIdForOrder && merchantIdForOrder > 0) {
+        const merchant = await queryRunner.manager.findOne(User, {
+          where: { id: merchantIdForOrder, role: UserRole.MERCHANT },
+        });
+        if (!merchant) {
+          throw new BadRequestException('Merchant account for this order is invalid');
+        }
+        order.merchant = merchant;
+      }
+
+      order.totalAmount = this.fromCents(totalAmountCents);
       order.items = orderItems.map((item) => {
         item.order = order;
         return item;
@@ -288,12 +341,16 @@ export class OrdersService {
       const orderRepo = this.dataSource.getRepository(Order);
       const reloaded = await orderRepo.findOne({
         where: { id: savedOrder.id },
-        relations: ['user', 'items'],
+        relations: ['user', 'items', 'merchant'],
       });
 
       if (!reloaded) {
         return savedOrder;
       }
+
+      this.botService.notifyMerchantNewOrder(reloaded).catch((error) => {
+        console.error('Failed to notify merchant for new order', error);
+      });
 
       return reloaded;
     } catch (error) {
@@ -313,33 +370,15 @@ export class OrdersService {
   }
 
   async updateStatus(id: number, status: OrderStatus): Promise<Order> {
-    await this.dataSource.getRepository(Order).update(id, { status });
-    const order = await this.dataSource.getRepository(Order).findOne({
-      where: { id },
-      relations: ['user'],
-    });
-    if (!order) {
-      throw new NotFoundException('Order not found');
-    }
-    return order;
+    return this.updateStatusWithInventoryTransition(id, status);
   }
 
-  async updateStatusAndNotify(id: number, status: OrderStatus): Promise<Order> {
-    const orderRepo = this.dataSource.getRepository(Order);
-    const existing = await orderRepo.findOne({ where: { id } });
-    if (!existing) {
-      throw new NotFoundException('Order not found');
-    }
-
-    await orderRepo.update(id, { status });
-
-    const order = await orderRepo.findOne({
-      where: { id },
-      relations: ['user', 'items'],
-    });
-    if (!order) {
-      throw new NotFoundException('Order not found');
-    }
+  async updateStatusAndNotify(
+    id: number,
+    status: OrderStatus,
+    actor: StaffActor,
+  ): Promise<Order> {
+    const order = await this.updateStatusWithInventoryTransition(id, status, actor);
 
     if (order.user?.telegramId) {
       this.botService
@@ -352,31 +391,27 @@ export class OrdersService {
     return order;
   }
 
-  async remove(id: number) {
-    const orderRepo = this.dataSource.getRepository(Order);
-    const existing = await orderRepo.findOne({
-      where: { id },
-      relations: ['items', 'items.product'],
-    });
-    if (!existing) {
-      throw new NotFoundException('Order not found');
-    }
-    if (existing.status !== OrderStatus.CANCELLED) {
-      throw new BadRequestException('Only cancelled orders can be deleted');
-    }
-
-    const receiptUrl = existing.receiptUrl;
+  async remove(id: number, actor: StaffActor) {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
-      for (const item of existing.items ?? []) {
-        if (!item.product) continue;
-        item.product.stock += item.quantity;
-        await queryRunner.manager.save(item.product);
+      const existing = await queryRunner.manager.findOne(Order, {
+        where: { id },
+        relations: ['items', 'items.product', 'merchant'],
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!existing) {
+        throw new NotFoundException('Order not found');
       }
 
+      this.assertCanManageOrder(existing, actor);
+      if (existing.status !== OrderStatus.CANCELLED) {
+        throw new BadRequestException('Only cancelled orders can be deleted');
+      }
+
+      const receiptUrl = existing.receiptUrl;
       await queryRunner.manager.delete(Order, id);
       await queryRunner.commitTransaction();
 
@@ -396,28 +431,36 @@ export class OrdersService {
   }
 
   async deleteCustomerPendingOrder(userId: number, orderId: number) {
-    const orderRepo = this.dataSource.getRepository(Order);
-    const existing = await orderRepo.findOne({
-      where: { id: orderId, user: { id: userId } },
-      relations: ['items', 'items.product'],
-    });
-    if (!existing) {
-      throw new NotFoundException('Order not found');
-    }
-    if (existing.status !== OrderStatus.PENDING) {
-      throw new BadRequestException('Only pending orders can be deleted');
-    }
-
-    const receiptUrl = existing.receiptUrl;
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
+      const existing = await queryRunner.manager.findOne(Order, {
+        where: { id: orderId, user: { id: userId } },
+        relations: ['items', 'items.product'],
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!existing) {
+        throw new NotFoundException('Order not found');
+      }
+      if (existing.status !== OrderStatus.PENDING) {
+        throw new BadRequestException('Only pending orders can be deleted');
+      }
+
+      const receiptUrl = existing.receiptUrl;
       for (const item of existing.items ?? []) {
-        if (!item.product) continue;
-        item.product.stock += item.quantity;
-        await queryRunner.manager.save(item.product);
+        const productId = item.product?.id;
+        if (!productId) continue;
+
+        const product = await queryRunner.manager.findOne(Product, {
+          where: { id: productId },
+          lock: { mode: 'pessimistic_write' },
+        });
+        if (!product) continue;
+
+        product.stock += item.quantity;
+        await queryRunner.manager.save(Product, product);
       }
 
       await queryRunner.manager.delete(Order, orderId);
@@ -441,12 +484,17 @@ export class OrdersService {
   async updateReceipt(
     orderId: number,
     receipt: { buffer: Buffer; filename?: string },
+    actor: StaffActor,
   ): Promise<Order> {
     const orderRepo = this.dataSource.getRepository(Order);
-    const existing = await orderRepo.findOne({ where: { id: orderId } });
+    const existing = await orderRepo.findOne({
+      where: { id: orderId },
+      relations: ['merchant'],
+    });
     if (!existing) {
       throw new NotFoundException('Order not found');
     }
+    this.assertCanManageOrder(existing, actor);
 
     const receiptUrl = await this.receiptStorage.save(
       receipt.buffer,
@@ -467,5 +515,130 @@ export class OrdersService {
       relations: ['user', 'items'],
     });
     return reloaded ?? existing;
+  }
+
+  private assertCanManageOrder(order: Order, actor: StaffActor) {
+    if (actor.role === UserRole.ADMIN) {
+      return;
+    }
+    if (actor.role === UserRole.MERCHANT && order.merchantId === actor.userId) {
+      return;
+    }
+    throw new NotFoundException('Order not found');
+  }
+
+  private async updateStatusWithInventoryTransition(
+    id: number,
+    status: OrderStatus,
+    actor?: StaffActor,
+  ): Promise<Order> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const existing = await queryRunner.manager.findOne(Order, {
+        where: { id },
+        relations: ['merchant', 'items', 'items.product', 'user'],
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!existing) {
+        throw new NotFoundException('Order not found');
+      }
+
+      if (actor) {
+        this.assertCanManageOrder(existing, actor);
+      }
+
+      const wasReserved = this.isInventoryReservedStatus(existing.status);
+      const willBeReserved = this.isInventoryReservedStatus(status);
+      const requiresInventoryTransition = wasReserved !== willBeReserved;
+
+      if (requiresInventoryTransition) {
+        for (const item of existing.items ?? []) {
+          const productId = item.product?.id;
+          if (!productId) {
+            if (willBeReserved) {
+              throw new BadRequestException(
+                `Cannot move order to ${status}: product "${item.productName}" no longer exists`,
+              );
+            }
+            continue;
+          }
+
+          const product = await queryRunner.manager.findOne(Product, {
+            where: { id: productId },
+            lock: { mode: 'pessimistic_write' },
+          });
+          if (!product) {
+            if (willBeReserved) {
+              throw new BadRequestException(
+                `Cannot move order to ${status}: product "${item.productName}" no longer exists`,
+              );
+            }
+            continue;
+          }
+
+          if (willBeReserved) {
+            if (!product.isActive) {
+              throw new BadRequestException(
+                `Cannot move order to ${status}: "${item.productName}" is not published`,
+              );
+            }
+            if (product.stock < item.quantity) {
+              throw new BadRequestException(
+                `Cannot move order to ${status}: insufficient stock for "${item.productName}"`,
+              );
+            }
+            product.stock -= item.quantity;
+          } else {
+            product.stock += item.quantity;
+          }
+
+          await queryRunner.manager.save(Product, product);
+        }
+      }
+
+      existing.status = status;
+      await queryRunner.manager.save(Order, existing);
+      await queryRunner.commitTransaction();
+
+      const reloaded = await this.dataSource.getRepository(Order).findOne({
+        where: { id },
+        relations: ['user', 'items', 'merchant'],
+      });
+      if (!reloaded) {
+        throw new NotFoundException('Order not found');
+      }
+      return reloaded;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  private isInventoryReservedStatus(status: OrderStatus) {
+    return status !== OrderStatus.CANCELLED && status !== OrderStatus.REJECTED;
+  }
+
+  private toCents(value: number | string): number {
+    const normalized = String(value ?? '').trim();
+    if (!/^-?\d+(\.\d{1,2})?$/.test(normalized)) {
+      throw new BadRequestException(`Invalid money value "${normalized}"`);
+    }
+
+    const negative = normalized.startsWith('-');
+    const unsigned = negative ? normalized.slice(1) : normalized;
+    const [wholePart, fractionalPart = ''] = unsigned.split('.');
+    const cents =
+      Number.parseInt(wholePart, 10) * 100 +
+      Number.parseInt((fractionalPart + '00').slice(0, 2), 10);
+    return negative ? -cents : cents;
+  }
+
+  private fromCents(cents: number): number {
+    return Number((cents / 100).toFixed(2));
   }
 }

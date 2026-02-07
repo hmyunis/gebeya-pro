@@ -1,39 +1,48 @@
 import type { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Spinner } from "@heroui/react";
 import { api } from "../lib/api";
+import DashboardShellSkeleton from "../layouts/DashboardShellSkeleton";
 
 type MeResponse = {
   userId?: number;
-  role?: string;
+  role?: "admin" | "merchant" | "customer";
   firstName?: string;
   username?: string;
   avatarUrl?: string;
 };
 
-export default function RequireAdmin({ children }: { children: ReactNode }) {
+type Role = NonNullable<MeResponse["role"]>;
+
+export default function RequireAdmin({
+  children,
+  allowedRoles = ["admin"],
+}: {
+  children: ReactNode;
+  allowedRoles?: Role[];
+}) {
   const location = useLocation();
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["me"],
     queryFn: async () => {
       const res = await api.get<MeResponse>("/auth/me");
       return res.data;
     },
     retry: false,
+    staleTime: 60_000,
   });
 
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Spinner size="lg" />
-      </div>
-    );
+  if (isLoading && !data) {
+    return <DashboardShellSkeleton />;
   }
 
-  if (isError || !data || data.role !== "admin") {
+  if (!data?.role) {
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  if (!allowedRoles.includes(data.role)) {
+    return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;

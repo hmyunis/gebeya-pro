@@ -42,7 +42,7 @@ export default function BankAccountsPage() {
 
   const { data, isLoading } = useQuery<BankAccount[]>({
     queryKey: ["bank-accounts"],
-    queryFn: async () => (await api.get("/bank-accounts/admin")).data,
+    queryFn: async () => (await api.get("/bank-accounts/manage")).data,
   });
 
   const accounts = useMemo(() => data ?? [], [data]);

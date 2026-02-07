@@ -9,12 +9,14 @@ export function ProductGrid({
   error,
   imageBase,
   onRetry,
+  onPreview,
 }: {
   products: Product[];
   isLoading: boolean;
   error: string | null;
   imageBase: string;
   onRetry: () => void;
+  onPreview: (product: Product) => void;
 }) {
   if (error) {
     return (
@@ -65,10 +67,10 @@ export function ProductGrid({
             key={product.id}
             product={product}
             imageBase={imageBase}
+            onPreview={onPreview}
           />
         ))
       )}
     </div>
   );
 }
-

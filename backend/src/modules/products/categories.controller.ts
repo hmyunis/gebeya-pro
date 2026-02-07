@@ -20,6 +20,9 @@ import {
   buildPaginationMeta,
   normalizePagination,
 } from '../../common/pagination';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { UserRole } from '../users/entities/user.entity';
 
 @Controller('categories')
 export class CategoriesController {
@@ -47,7 +50,8 @@ export class CategoriesController {
     return { data, meta: buildPaginationMeta(total, safePage, safeLimit) };
   }
 
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserRole.ADMIN)
   @Post()
   async create(@Body('name') name: string) {
     const slug = slugify(name, { lower: true });
@@ -55,7 +59,8 @@ export class CategoriesController {
     return this.catRepo.save(cat);
   }
 
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserRole.ADMIN)
   @Patch(':id')
   async update(
     @Param('id', ParseIntPipe) id: number,
@@ -71,7 +76,8 @@ export class CategoriesController {
     return this.catRepo.save(category);
   }
 
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserRole.ADMIN)
   @Delete(':id')
   async remove(@Param('id', ParseIntPipe) id: number) {
     const category = await this.catRepo.findOne({ where: { id } });

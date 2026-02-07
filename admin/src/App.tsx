@@ -10,6 +10,9 @@ import BankAccountsPage from "./pages/payments/BankAccountsPage";
 import ContactMessagesPage from "./pages/contact/ContactMessagesPage";
 import AdminProfilePage from "./pages/profile/AdminProfilePage";
 import RequireAdmin from "./components/RequireAdmin";
+import MerchantsPage from "./pages/merchants/MerchantsPage";
+import AnnouncementsPage from "./pages/announcements/AnnouncementsPage";
+import CustomersPage from "./pages/customers/CustomersPage";
 
 function App() {
   return (
@@ -21,7 +24,7 @@ function App() {
         <Route
           path="/"
           element={
-            <RequireAdmin>
+            <RequireAdmin allowedRoles={["admin", "merchant"]}>
               <DashboardLayout />
             </RequireAdmin>
           }
@@ -29,10 +32,55 @@ function App() {
           <Route index element={<DashboardHome />} />
           <Route path="products" element={<ProductsPage />} />
           <Route path="orders" element={<OrdersPage />} />
-          <Route path="activity-logs" element={<ActivityLogsPage />} />
-          <Route path="bank-accounts" element={<BankAccountsPage />} />
-          <Route path="contact-messages" element={<ContactMessagesPage />} />
           <Route path="profile" element={<AdminProfilePage />} />
+          <Route
+            path="activity-logs"
+            element={
+              <RequireAdmin allowedRoles={["admin"]}>
+                <ActivityLogsPage />
+              </RequireAdmin>
+            }
+          />
+          <Route
+            path="bank-accounts"
+            element={
+              <RequireAdmin allowedRoles={["admin", "merchant"]}>
+                <BankAccountsPage />
+              </RequireAdmin>
+            }
+          />
+          <Route
+            path="contact-messages"
+            element={
+              <RequireAdmin allowedRoles={["admin"]}>
+                <ContactMessagesPage />
+              </RequireAdmin>
+            }
+          />
+          <Route
+            path="merchants"
+            element={
+              <RequireAdmin allowedRoles={["admin"]}>
+                <MerchantsPage />
+              </RequireAdmin>
+            }
+          />
+          <Route
+            path="customers"
+            element={
+              <RequireAdmin allowedRoles={["admin"]}>
+                <CustomersPage />
+              </RequireAdmin>
+            }
+          />
+          <Route
+            path="announcements"
+            element={
+              <RequireAdmin allowedRoles={["admin"]}>
+                <AnnouncementsPage />
+              </RequireAdmin>
+            }
+          />
         </Route>
       </Routes>
     </Providers>

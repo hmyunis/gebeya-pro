@@ -52,6 +52,14 @@ export default function OrderModal({
     () => items.reduce((acc, item) => acc + item.price * item.quantity, 0),
     [items]
   );
+  const checkoutProductIds = useMemo(
+    () =>
+      items
+        .map((item) => item.id)
+        .sort((a, b) => a - b)
+        .join(","),
+    [items]
+  );
 
   const [address, setAddress] = useState("");
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
@@ -60,12 +68,17 @@ export default function OrderModal({
   );
   const [isReceiptPreviewOpen, setIsReceiptPreviewOpen] = useState(false);
   const bankAccountsQuery = useQuery({
-    queryKey: ["bank-accounts"],
+    queryKey: ["bank-accounts", checkoutProductIds],
     queryFn: async ({ signal }) => {
-      const response = await api.get("/bank-accounts", { signal });
+      const response = await api.get("/bank-accounts", {
+        signal,
+        params: {
+          productIds: checkoutProductIds || undefined,
+        },
+      });
       return Array.isArray(response.data) ? (response.data as BankAccount[]) : [];
     },
-    enabled: isOpen,
+    enabled: isOpen && items.length > 0,
     staleTime: 60_000,
   });
 
@@ -386,7 +399,7 @@ export default function OrderModal({
                   <Input
                     isRequired
                     label="Full address"
-                    placeholder="e.g. Addis Ababa, Bole"
+                    placeholder="e.g. Bole, Addis Ababa"
                     value={address}
                     onValueChange={(val) => {
                       if (val.length <= 30) setAddress(val);

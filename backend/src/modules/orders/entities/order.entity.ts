@@ -1,4 +1,11 @@
-import { Entity, Column, ManyToOne, OneToMany } from 'typeorm';
+import {
+  Entity,
+  Column,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
+  Index,
+} from 'typeorm';
 import { AbstractEntity } from '../../../common/entities/abstract.entity';
 import { User } from '../../users/entities/user.entity';
 import { OrderItem } from './order-item.entity';
@@ -15,6 +22,10 @@ export enum OrderStatus {
 export class Order extends AbstractEntity {
   @ManyToOne(() => User, { nullable: false })
   user: User;
+
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: 'merchantId' })
+  merchant: User | null;
 
   @OneToMany(() => OrderItem, (item) => item.order, { cascade: true })
   items: OrderItem[];
@@ -33,4 +44,8 @@ export class Order extends AbstractEntity {
 
   @Column({ nullable: true })
   adminNote: string;
+
+  @Index('idx_orders_merchantId')
+  @Column({ nullable: true })
+  merchantId: number | null;
 }

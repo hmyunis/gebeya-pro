@@ -2,9 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import {
   User,
   Chip,
+  Switch,
   Tooltip,
   Button,
   Input,
+  Select,
+  SelectItem,
   useDisclosure,
   Tabs,
   Tab,
@@ -22,7 +25,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { FloppyDisk, PencilSimple, Plus, Tag, Trash, X } from "@phosphor-icons/react";
 import { api } from "../../lib/api";
 import { getImageUrl } from "../../types";
-import type { Product, Category, PaginatedResponse } from "../../types";
+import type { Product, Category, MerchantUser, PaginatedResponse } from "../../types";
 import ProductModal from "../../components/products/ProductModal";
 import { DataTable } from "../../components/table/DataTable";
 import { DataTablePagination } from "../../components/table/DataTablePagination";
@@ -31,6 +34,9 @@ export default function ProductsPage() {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
+  const [manageScope, setManageScope] = useState<"all" | "mine" | "merchant">("all");
+  const [merchantSearch, setMerchantSearch] = useState("");
+  const [selectedMerchantId, setSelectedMerchantId] = useState<string | null>(null);
   const [categoryName, setCategoryName] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -46,13 +52,33 @@ export default function ProductsPage() {
     name: string;
   } | null>(null);
 
+  const { data: me } = useQuery<{ role?: string }>({
+    queryKey: ["me"],
+    queryFn: async () => (await api.get("/auth/me")).data,
+    staleTime: 30_000,
+  });
+  const isAdmin = me?.role === "admin";
+
   const { data: productsResponse, isLoading } = useQuery<PaginatedResponse<Product>>({
-    queryKey: ['products', search, productsPage, productsLimit],
+    queryKey: ['products', search, productsPage, productsLimit, manageScope, selectedMerchantId],
     queryFn: async () => {
-      const endpoint = search.length > 2 ? '/products/search' : '/products';
       return (
-        await api.get(endpoint, {
-          params: { q: search.length > 2 ? search : undefined, page: productsPage, limit: productsLimit },
+        await api.get('/products/manage', {
+          params: {
+            q: search.length > 2 ? search : undefined,
+            page: productsPage,
+            limit: productsLimit,
+            scope:
+              isAdmin && manageScope === "merchant" && !selectedMerchantId
+                ? "all"
+                : isAdmin
+                  ? manageScope
+                  : undefined,
+            merchantId:
+              isAdmin && manageScope === "merchant"
+                ? selectedMerchantId ?? undefined
+                : undefined,
+          },
         })
       ).data;
     },
@@ -66,18 +92,46 @@ export default function ProductsPage() {
           params: { page: categoriesPage, limit: categoriesLimit },
         })
       ).data,
+    enabled: isAdmin,
+  });
+
+  const { data: merchantsResponse, isLoading: isLoadingMerchants } = useQuery<PaginatedResponse<MerchantUser>>({
+    queryKey: ["merchant-options", merchantSearch],
+    queryFn: async () =>
+      (
+        await api.get("/merchants", {
+          params: {
+            page: 1,
+            limit: 25,
+            archive: "active",
+            search: merchantSearch.trim() || undefined,
+          },
+        })
+      ).data,
+    enabled: isAdmin,
   });
 
   const products = productsResponse?.data ?? [];
   const productsMeta = productsResponse?.meta;
   const categories = categoriesResponse?.data ?? [];
   const categoriesMeta = categoriesResponse?.meta;
+  const merchants = merchantsResponse?.data ?? [];
   const productsTotalPages = Math.max(1, productsMeta?.totalPages ?? 1);
   const categoriesTotalPages = Math.max(1, categoriesMeta?.totalPages ?? 1);
 
   useEffect(() => {
     setProductsPage(1);
   }, [search]);
+
+  useEffect(() => {
+    setProductsPage(1);
+  }, [manageScope, selectedMerchantId]);
+
+  useEffect(() => {
+    if (manageScope !== "merchant") {
+      setSelectedMerchantId(null);
+    }
+  }, [manageScope]);
 
   type CategoryRow = Category & { __editing?: boolean };
 
@@ -176,8 +230,43 @@ export default function ProductsPage() {
     },
   });
 
+  const toggleProductPublishMutation = useMutation({
+    mutationFn: async ({
+      id,
+      isActive,
+    }: {
+      id: number;
+      isActive: boolean;
+    }) => {
+      const formData = new FormData();
+      formData.append("isActive", String(isActive));
+
+      return api.patch(`/products/${id}`, formData);
+    },
+    onSuccess: (_response, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      addToast({
+        title: "Product visibility updated",
+        description: variables.isActive
+          ? "Product is now published."
+          : "Product moved to draft.",
+        color: "success",
+      });
+    },
+    onError: (err: any) => {
+      console.error(err);
+      addToast({
+        title: "Error",
+        description: err.response?.data?.message || "Failed to update product visibility",
+        color: "danger",
+      });
+    },
+  });
+
   const productsOffset = ((productsMeta?.page ?? 1) - 1) * (productsMeta?.limit ?? products.length);
   const categoriesOffset = ((categoriesMeta?.page ?? 1) - 1) * (categoriesMeta?.limit ?? categories.length);
+  const getPrimaryImage = (product: Product) =>
+    getImageUrl(product.imageUrls?.[0] ?? product.imageUrl ?? null);
 
   const handleCreateCategory = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -188,6 +277,14 @@ export default function ProductsPage() {
   const handleOpenCreate = () => {
     setSelectedProduct(null);
     onOpen();
+  };
+
+  const handleClearProductFilters = () => {
+    setSearch("");
+    setManageScope("all");
+    setMerchantSearch("");
+    setSelectedMerchantId(null);
+    setProductsPage(1);
   };
 
   const handleCloseModal = () => {
@@ -217,8 +314,8 @@ export default function ProductsPage() {
     });
   };
 
-  const productColumns = useMemo<ColumnDef<Product>[]>(
-    () => [
+  const productColumns = useMemo<ColumnDef<Product>[]>(() => {
+    const columns: ColumnDef<Product>[] = [
       {
         header: "#",
         cell: ({ row }) => (
@@ -229,7 +326,7 @@ export default function ProductsPage() {
         header: "PRODUCT",
         cell: ({ row }) => (
           <User
-            avatarProps={{ radius: "lg", src: getImageUrl(row.original.imageUrl) }}
+            avatarProps={{ radius: "lg", src: getPrimaryImage(row.original) }}
             description={row.original.slug}
             name={row.original.name}
           >
@@ -258,6 +355,54 @@ export default function ProductsPage() {
             {row.original.stock} in stock
           </Chip>
         ),
+      },
+    ];
+
+    if (isAdmin) {
+      columns.push({
+        header: "CREATED BY",
+        cell: ({ row }) => {
+          const creator = row.original.createdBy;
+          if (creator?.firstName) {
+            return <span className="text-sm">{creator.firstName}</span>;
+          }
+          if (creator?.loginUsername) {
+            return <span className="text-sm">@{creator.loginUsername}</span>;
+          }
+          if (row.original.createdById) {
+            return <span className="text-sm text-default-500">User #{row.original.createdById}</span>;
+          }
+          return <span className="text-sm text-default-500">Unknown</span>;
+        },
+      });
+    }
+
+    columns.push(
+      {
+        header: "PUBLISHED",
+        cell: ({ row }) => {
+          const isSelected = Boolean(row.original.isActive);
+          const isUpdating =
+            toggleProductPublishMutation.isPending &&
+            toggleProductPublishMutation.variables?.id === row.original.id;
+
+          return (
+            <Switch
+              size="sm"
+              color="success"
+              isSelected={isSelected}
+              isDisabled={isUpdating}
+              onValueChange={(next) =>
+                toggleProductPublishMutation.mutate({
+                  id: row.original.id,
+                  isActive: next,
+                })
+              }
+            >
+              {isSelected ? "Published" : "Draft"}
+            </Switch>
+          );
+        },
       },
       {
         header: "ACTIONS",
@@ -295,10 +440,11 @@ export default function ProductsPage() {
             </Tooltip>
           </div>
         ),
-      },
-    ],
-    [onOpen, productsOffset]
-  );
+      }
+    );
+
+    return columns;
+  }, [isAdmin, onOpen, productsOffset, toggleProductPublishMutation]);
 
   const categoryColumns = useMemo<ColumnDef<CategoryRow>[]>(
     () => [
@@ -393,33 +539,111 @@ export default function ProductsPage() {
     ]
   );
 
+  const hasActiveProductFilters = Boolean(
+    search.trim().length > 0 ||
+      (isAdmin &&
+        (manageScope !== "all" ||
+          merchantSearch.trim().length > 0 ||
+          selectedMerchantId)),
+  );
+
   return (
     <div className="space-y-4">
       <Tabs aria-label="Products" color="primary" variant="underlined">
         <Tab key="products" title="Products">
           <div className="space-y-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-content1 p-4 rounded-xl shadow-sm">
-              <Input
-                isClearable
-                className="w-full sm:max-w-[44%]"
-                placeholder="Search by name..."
-                startContent={
-                  <svg className="text-default-300" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                  </svg>
-                }
-                value={search}
-                onValueChange={setSearch}
-              />
-              <Button
-                color="primary"
-                onPress={handleOpenCreate}
-                startContent={<Plus className="h-4 w-4" />}
-                className="w-full sm:w-auto"
-              >
-                Add New Product
-              </Button>
+            <div className="bg-content1 p-4 rounded-xl shadow-sm space-y-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <Input
+                  isClearable
+                  className="w-full sm:max-w-[44%]"
+                  placeholder="Search by product name..."
+                  startContent={
+                    <svg className="text-default-300" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="11" cy="11" r="8"></circle>
+                      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                  }
+                  value={search}
+                  onValueChange={setSearch}
+                />
+                <div className="flex w-full sm:w-auto items-center gap-2 sm:justify-end">
+                  <Button
+                    variant="flat"
+                    onPress={handleClearProductFilters}
+                    isDisabled={!hasActiveProductFilters}
+                    className="w-full sm:w-auto"
+                  >
+                    Clear Filters
+                  </Button>
+                  <Button
+                    color="primary"
+                    onPress={handleOpenCreate}
+                    startContent={<Plus className="h-4 w-4" />}
+                    className="w-full sm:w-auto"
+                  >
+                    Add New Product
+                  </Button>
+                </div>
+              </div>
+
+              {isAdmin ? (
+                <div className="grid gap-3 md:grid-cols-3">
+                  <Select
+                    label="Owner scope"
+                    selectedKeys={new Set([manageScope])}
+                    onSelectionChange={(keys) => {
+                      const next = keys === "all" ? undefined : Array.from(keys)[0];
+                      if (
+                        next === "all" ||
+                        next === "mine" ||
+                        next === "merchant"
+                      ) {
+                        setManageScope(next);
+                      }
+                    }}
+                  >
+                    <SelectItem key="all">All products</SelectItem>
+                    <SelectItem key="mine">My products</SelectItem>
+                    <SelectItem key="merchant">Specific merchant</SelectItem>
+                  </Select>
+
+                  <Input
+                    label="Merchant search"
+                    placeholder="Search merchant..."
+                    value={merchantSearch}
+                    onValueChange={setMerchantSearch}
+                    isDisabled={manageScope !== "merchant"}
+                  />
+
+                  <Select
+                    label="Merchant"
+                    placeholder={
+                      manageScope === "merchant"
+                        ? "Select merchant"
+                        : "Merchant scope not selected"
+                    }
+                    selectedKeys={
+                      selectedMerchantId
+                        ? new Set([selectedMerchantId])
+                        : new Set([])
+                    }
+                    onSelectionChange={(keys) => {
+                      const selected =
+                        keys === "all" ? undefined : Array.from(keys)[0];
+                      setSelectedMerchantId(selected ? String(selected) : null);
+                    }}
+                    isDisabled={manageScope !== "merchant"}
+                    isLoading={isLoadingMerchants}
+                  >
+                    {merchants.map((merchant) => (
+                      <SelectItem key={String(merchant.id)}>
+                        {merchant.firstName || merchant.loginUsername || `Merchant #${merchant.id}`}
+                      </SelectItem>
+                    ))}
+                  </Select>
+                </div>
+              ) : null}
             </div>
 
             <DataTable columns={productColumns} data={products} isLoading={isLoading} />
@@ -443,55 +667,62 @@ export default function ProductsPage() {
           </div>
         </Tab>
 
-        <Tab key="categories" title="Categories">
-          <Card className="mb-4">
-            <CardBody>
-              <form onSubmit={handleCreateCategory} className="flex flex-col sm:flex-row gap-3">
-                <Input
-                  label="Category Name"
-                  placeholder="e.g. Smartphones"
-                  value={categoryName}
-                  onValueChange={setCategoryName}
-                  isRequired
-                />
-                <Button
-                  color="primary"
-                  type="submit"
-                  isLoading={createCategoryMutation.isPending}
-                  startContent={<Tag className="h-4 w-4" />}
-                >
-                  Add Category
-                </Button>
-              </form>
-            </CardBody>
-          </Card>
+        {isAdmin ? (
+          <Tab key="categories" title="Categories">
+            <Card className="mb-4">
+              <CardBody>
+                <form onSubmit={handleCreateCategory} className="flex flex-col sm:flex-row gap-3">
+                  <Input
+                    label="Category Name"
+                    placeholder="e.g. Smartphones"
+                    value={categoryName}
+                    onValueChange={setCategoryName}
+                    isRequired
+                  />
+                  <Button
+                    color="primary"
+                    type="submit"
+                    isLoading={createCategoryMutation.isPending}
+                    startContent={<Tag className="h-4 w-4" />}
+                  >
+                    Add Category
+                  </Button>
+                </form>
+              </CardBody>
+            </Card>
 
-          <DataTable
-            columns={categoryColumns}
-            data={categoriesWithEditState}
-            isLoading={isLoadingCategories}
-          />
+            <DataTable
+              columns={categoryColumns}
+              data={categoriesWithEditState}
+              isLoading={isLoadingCategories}
+            />
 
-          <DataTablePagination
-            pagination={{
-              count: categoriesMeta?.total ?? 0,
-              page: categoriesMeta?.page ?? categoriesPage,
-              pageSize: categoriesMeta?.limit ?? categoriesLimit,
-              totalPages: categoriesTotalPages,
-            }}
-            onPageChange={(page) => {
-              const next = Math.min(Math.max(1, page), categoriesTotalPages);
-              setCategoriesPage(next);
-            }}
-            onPageSizeChange={(size) => {
-              setCategoriesLimit(size);
-              setCategoriesPage(1);
-            }}
-          />
-        </Tab>
+            <DataTablePagination
+              pagination={{
+                count: categoriesMeta?.total ?? 0,
+                page: categoriesMeta?.page ?? categoriesPage,
+                pageSize: categoriesMeta?.limit ?? categoriesLimit,
+                totalPages: categoriesTotalPages,
+              }}
+              onPageChange={(page) => {
+                const next = Math.min(Math.max(1, page), categoriesTotalPages);
+                setCategoriesPage(next);
+              }}
+              onPageSizeChange={(size) => {
+                setCategoriesLimit(size);
+                setCategoriesPage(1);
+              }}
+            />
+          </Tab>
+        ) : null}
       </Tabs>
 
-      <ProductModal isOpen={isOpen} onClose={handleCloseModal} product={selectedProduct} />
+      <ProductModal
+        isOpen={isOpen}
+        onClose={handleCloseModal}
+        product={selectedProduct}
+        isAdmin={isAdmin}
+      />
 
       <Modal isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} size="md">
         <ModalContent>

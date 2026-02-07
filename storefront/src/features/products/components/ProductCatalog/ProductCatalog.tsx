@@ -15,6 +15,8 @@ import QueryProvider from "@/app/QueryProvider";
 
 import { ProductFilters } from "./ProductFilters";
 import { ProductGrid } from "./ProductGrid";
+import { ProductPreviewModal } from "./ProductPreviewModal";
+import type { Product } from "@/features/products/types";
 
 export default function ProductCatalog({
   apiBase,
@@ -114,6 +116,7 @@ function ProductCatalogContent({
   }, []);
 
   const [search, setSearch] = useState("");
+  const [previewProduct, setPreviewProduct] = useState<Product | null>(null);
   const [activeCategories, setActiveCategories] = useState<Set<number>>(
     () => new Set()
   );
@@ -274,6 +277,7 @@ function ProductCatalogContent({
             error={error}
             imageBase={imageBase}
             onRetry={reload}
+            onPreview={setPreviewProduct}
           />
         </div>
       </div>
@@ -288,6 +292,12 @@ function ProductCatalogContent({
       />
 
       <OrderModal isOpen={isOrderOpen} onClose={() => setIsOrderOpen(false)} />
+      <ProductPreviewModal
+        isOpen={Boolean(previewProduct)}
+        onClose={() => setPreviewProduct(null)}
+        product={previewProduct}
+        imageBase={imageBase}
+      />
     </section>
   );
 }

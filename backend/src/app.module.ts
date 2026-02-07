@@ -14,6 +14,7 @@ import { AuditModule } from './modules/audit/audit.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { ContactModule } from './modules/contact/contact.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { MerchantsModule } from './modules/merchants/merchants.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     AdminModule,
     PaymentsModule,
     ContactModule,
+    MerchantsModule,
   ],
   controllers: [],
   providers: [],

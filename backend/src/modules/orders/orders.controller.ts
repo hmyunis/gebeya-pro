@@ -26,21 +26,33 @@ import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { CreateAdminOrderDto } from './dto/create-admin-order.dto';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { UserRole } from '../users/entities/user.entity';
+import {
+  assertMultipartRequest,
+  coerceMultipartFieldValue,
+  readMultipartFileToBuffer,
+} from '../../common/multipart';
 
 type AuthenticatedRequest = FastifyRequest & {
   user: {
     userId: number;
-    role: string;
+    role: UserRole;
   };
 };
+
+const MAX_ORDER_RECEIPT_BYTES = 25 * 1024 * 1024;
+const MAX_ORDER_MULTIPART_FIELDS = 10;
 
 @Controller('orders')
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
   @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.MERCHANT)
   @Get()
   async findAll(
+    @Req() req: AuthenticatedRequest,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('status') status?: string,
@@ -55,14 +67,16 @@ export class OrdersController {
       safePage,
       safeLimit,
       parsedStatus,
+      req.user,
     );
     return { data, meta: buildPaginationMeta(total, safePage, safeLimit) };
   }
 
   @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.MERCHANT)
   @Get('status-counts')
-  getStatusCounts() {
-    return this.ordersService.getStatusCounts();
+  getStatusCounts(@Req() req: AuthenticatedRequest) {
+    return this.ordersService.getStatusCounts(req.user);
   }
 
   @UseGuards(AuthGuard('jwt'))
@@ -127,6 +141,7 @@ export class OrdersController {
   }
 
   @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserRole.ADMIN)
   @Post('admin')
   createForUser(@Body() dto: CreateAdminOrderDto) {
     return this.ordersService.createForUser(dto.userId, {
@@ -136,28 +151,35 @@ export class OrdersController {
   }
 
   @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.MERCHANT)
   @Patch(':id/status')
   updateStatus(
+    @Req() req: AuthenticatedRequest,
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateOrderStatusDto,
   ) {
-    return this.ordersService.updateStatusAndNotify(id, dto.status);
+    return this.ordersService.updateStatusAndNotify(id, dto.status, req.user);
   }
 
   @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.MERCHANT)
   @Patch(':id/receipt')
   async updateReceipt(
+    @Req() req: AuthenticatedRequest,
     @Param('id', ParseIntPipe) id: number,
-    @Req() req: FastifyRequest,
   ) {
     const receipt = await this.parseReceiptFile(req);
-    return this.ordersService.updateReceipt(id, receipt);
+    return this.ordersService.updateReceipt(id, receipt, req.user);
   }
 
   @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.MERCHANT)
   @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.ordersService.remove(id);
+  remove(
+    @Req() req: AuthenticatedRequest,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.ordersService.remove(id, req.user);
   }
 
   private async parseCreateOrderRequest(req: FastifyRequest): Promise<{
@@ -173,15 +195,38 @@ export class OrdersController {
 
       const body: Record<string, unknown> = {};
       let receipt: { buffer: Buffer; filename?: string } | undefined;
+      let fieldCount = 0;
+      let receiptCount = 0;
 
       for await (const part of parts) {
         if (part.type === 'file') {
-          const buffer = await part.toBuffer();
-          if (part.fieldname === 'receipt' && buffer.length > 0) {
+          if (part.fieldname !== 'receipt') {
+            throw new BadRequestException(
+              `Unexpected file field "${part.fieldname}"`,
+            );
+          }
+
+          receiptCount += 1;
+          if (receiptCount > 1) {
+            throw new BadRequestException('Only one receipt file is allowed');
+          }
+
+          const buffer = await readMultipartFileToBuffer(part, {
+            maxBytes: MAX_ORDER_RECEIPT_BYTES,
+            errorLabel: 'Receipt file',
+          });
+          if (buffer.length > 0) {
             receipt = { buffer, filename: part.filename };
           }
         } else {
-          body[part.fieldname] = part.value;
+          fieldCount += 1;
+          if (fieldCount > MAX_ORDER_MULTIPART_FIELDS) {
+            throw new BadRequestException('Too many multipart fields');
+          }
+          body[part.fieldname] = coerceMultipartFieldValue(
+            part.value,
+            part.fieldname,
+          );
         }
       }
 
@@ -212,10 +257,7 @@ export class OrdersController {
   private async parseReceiptFile(
     req: FastifyRequest,
   ): Promise<{ buffer: Buffer; filename?: string }> {
-    const contentType = String(req.headers['content-type'] ?? '');
-    if (!contentType.includes('multipart/form-data')) {
-      throw new BadRequestException('Expected multipart/form-data');
-    }
+    assertMultipartRequest(req);
 
     const parts = (req as any).parts?.();
     if (!parts) {
@@ -223,10 +265,25 @@ export class OrdersController {
     }
 
     let receipt: { buffer: Buffer; filename?: string } | undefined;
+    let receiptCount = 0;
     for await (const part of parts) {
       if (part.type === 'file') {
-        const buffer = await part.toBuffer();
-        if (part.fieldname === 'receipt' && buffer.length) {
+        if (part.fieldname !== 'receipt') {
+          throw new BadRequestException(
+            `Unexpected file field "${part.fieldname}"`,
+          );
+        }
+
+        receiptCount += 1;
+        if (receiptCount > 1) {
+          throw new BadRequestException('Only one receipt file is allowed');
+        }
+
+        const buffer = await readMultipartFileToBuffer(part, {
+          maxBytes: MAX_ORDER_RECEIPT_BYTES,
+          errorLabel: 'Receipt file',
+        });
+        if (buffer.length) {
           receipt = { buffer, filename: part.filename };
         }
       }

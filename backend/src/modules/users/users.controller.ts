@@ -13,6 +13,12 @@ import { type FastifyRequest } from 'fastify';
 import { UsersService } from './users.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { AvatarImageService } from './avatar-image.service';
+import {
+  assertMultipartRequest,
+  readMultipartFileToBuffer,
+} from '../../common/multipart';
+
+const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 
 @Controller('users')
 @UseGuards(AuthGuard('jwt'))
@@ -77,10 +83,7 @@ export class UsersController {
   private async parseAvatarFile(
     req: FastifyRequest,
   ): Promise<{ buffer: Buffer; filename?: string }> {
-    const contentType = String(req.headers['content-type'] ?? '');
-    if (!contentType.includes('multipart/form-data')) {
-      throw new BadRequestException('Expected multipart/form-data');
-    }
+    assertMultipartRequest(req);
 
     const parts = (req as any).parts?.();
     if (!parts) {
@@ -88,10 +91,26 @@ export class UsersController {
     }
 
     let avatar: { buffer: Buffer; filename?: string } | undefined;
+    let avatarCount = 0;
     for await (const part of parts) {
       if (part.type === 'file') {
-        const buffer = await part.toBuffer();
-        if (part.fieldname === 'avatar' && buffer.length) {
+        if (part.fieldname !== 'avatar') {
+          throw new BadRequestException(
+            `Unexpected file field "${part.fieldname}"`,
+          );
+        }
+
+        avatarCount += 1;
+        if (avatarCount > 1) {
+          throw new BadRequestException('Only one avatar file is allowed');
+        }
+
+        const buffer = await readMultipartFileToBuffer(part, {
+          maxBytes: MAX_AVATAR_BYTES,
+          allowedMimePrefixes: ['image/'],
+          errorLabel: 'Avatar',
+        });
+        if (buffer.length) {
           avatar = { buffer, filename: part.filename };
         }
       }

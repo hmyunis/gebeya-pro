@@ -1,5 +1,6 @@
-import { Column, Entity } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { AbstractEntity } from '../../../common/entities/abstract.entity';
+import { User } from '../../users/entities/user.entity';
 
 export enum BankAccountStatus {
   ACTIVE = 'ACTIVE',
@@ -26,4 +27,12 @@ export class BankAccount extends AbstractEntity {
     default: BankAccountStatus.ACTIVE,
   })
   status: BankAccountStatus;
+
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'ownerUserId' })
+  ownerUser: User | null;
+
+  @Index('idx_bank_accounts_ownerUserId')
+  @Column({ nullable: true })
+  ownerUserId: number | null;
 }

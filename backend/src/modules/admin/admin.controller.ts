@@ -1,30 +1,41 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { DataSource } from 'typeorm';
 import { Order, OrderStatus } from '../orders/entities/order.entity';
-import { User } from '../users/entities/user.entity';
-import { BotService } from '../bot/bot.service';
+import { User, UserRole } from '../users/entities/user.entity';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import {
   buildPaginationMeta,
   normalizePagination,
 } from '../../common/pagination';
-import { UserRole } from '../users/entities/user.entity';
 import { AuditService } from '../audit/audit.service';
 import { OrderItem } from '../orders/entities/order-item.entity';
-
-class BroadcastDto {
-  message: string;
-  target?: 'all' | 'vip';
-}
+import { BroadcastService } from './broadcast.service';
+import { CreateBroadcastDto } from './dto/create-broadcast.dto';
+import {
+  BroadcastDeliveryFilter,
+  ListBroadcastDeliveriesDto,
+} from './dto/list-broadcast-deliveries.dto';
+import { ListBroadcastUsersDto } from './dto/list-broadcast-users.dto';
 
 @Controller('admin')
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 export class AdminController {
   constructor(
     private readonly dataSource: DataSource,
-    private readonly botService: BotService,
     private readonly auditService: AuditService,
+    private readonly broadcastService: BroadcastService,
   ) {}
 
   @Get('dashboard-stats')
@@ -37,7 +48,9 @@ export class AdminController {
       orderRepo
         .createQueryBuilder('order')
         .select('SUM(order.totalAmount)', 'sum')
-        .where('order.status != :status', { status: OrderStatus.CANCELLED })
+        .where('order.status NOT IN (:...excludedStatuses)', {
+          excludedStatuses: [OrderStatus.CANCELLED, OrderStatus.REJECTED],
+        })
         .getRawOne<{ sum: string | null }>(),
     ]);
 
@@ -50,30 +63,125 @@ export class AdminController {
 
   @Post('broadcast')
   async broadcastMessage(
-    @Body() dto: BroadcastDto,
+    @Req() req,
+    @Body() dto: CreateBroadcastDto,
     @Query('limit') limit?: string,
   ) {
-    const userRepo = this.dataSource.getRepository(User);
-    const take = limit ? Number.parseInt(limit, 10) : undefined;
+    const parsedLimit = Number.parseInt(limit ?? '', 10);
+    const take =
+      Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : undefined;
+    const run = await this.broadcastService.queueBroadcast({
+      message: dto.message,
+      kind: dto.kind,
+      target: dto.target,
+      targetRole: dto.role,
+      targetUserIds: dto.userIds,
+      requestedByUserId: req?.user?.userId,
+      limit: take,
+    });
 
-    const query = userRepo
-      .createQueryBuilder('user')
-      .where('user.telegramId IS NOT NULL');
+    return {
+      runId: run.id,
+      status: run.status,
+      kind: run.kind,
+      target: run.target,
+      totalRecipients: run.totalRecipients,
+      pendingCount: run.pendingCount,
+    };
+  }
 
-    const users = take
-      ? await query.take(take).getMany()
-      : await query.getMany();
+  @Get('broadcast/runs')
+  async listBroadcastRuns(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const { page: safePage, limit: safeLimit } = normalizePagination(
+      page,
+      limit,
+    );
+    const { data, total } = await this.broadcastService.listRuns(
+      safePage,
+      safeLimit,
+    );
+    return { data, meta: buildPaginationMeta(total, safePage, safeLimit) };
+  }
 
-    let count = 0;
-    for (const user of users) {
-      if (!user.telegramId) {
-        continue;
-      }
-      await this.botService.notifyUser(user.telegramId, dto.message);
-      count += 1;
-    }
+  @Get('broadcast/runs/:id')
+  async getBroadcastRun(@Param('id', ParseIntPipe) id: number) {
+    return this.broadcastService.getRun(id);
+  }
 
-    return { sentTo: count };
+  @Get('broadcast/runs/:id/deliveries')
+  async listBroadcastRunDeliveries(
+    @Param('id', ParseIntPipe) id: number,
+    @Query() query: ListBroadcastDeliveriesDto,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const { page: safePage, limit: safeLimit } = normalizePagination(
+      page,
+      limit,
+    );
+    const { data, total } = await this.broadcastService.listRunDeliveries({
+      runId: id,
+      page: safePage,
+      limit: safeLimit,
+      filter: query.status ?? BroadcastDeliveryFilter.ALL,
+    });
+    return { data, meta: buildPaginationMeta(total, safePage, safeLimit) };
+  }
+
+  @Post('broadcast/runs/:id/cancel')
+  async cancelBroadcastRun(@Param('id', ParseIntPipe) id: number) {
+    return this.broadcastService.cancelRun(id);
+  }
+
+  @Post('broadcast/runs/:id/repost')
+  async repostBroadcastRun(@Req() req, @Param('id', ParseIntPipe) id: number) {
+    const run = await this.broadcastService.repostRun({
+      runId: id,
+      requestedByUserId: req?.user?.userId,
+    });
+
+    return {
+      runId: run.id,
+      status: run.status,
+      kind: run.kind,
+      target: run.target,
+      totalRecipients: run.totalRecipients,
+      pendingCount: run.pendingCount,
+    };
+  }
+
+  @Delete('broadcast/runs/:id')
+  async deleteBroadcastRun(@Param('id', ParseIntPipe) id: number) {
+    return this.broadcastService.deleteRun(id);
+  }
+
+  @Post('broadcast/runs/:id/requeue-unknown')
+  async requeueUnknownBroadcastDeliveries(
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.broadcastService.requeueUnknownDeliveries(id);
+  }
+
+  @Get('broadcast/users')
+  async listBroadcastUsers(
+    @Query() query: ListBroadcastUsersDto,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const { page: safePage, limit: safeLimit } = normalizePagination(
+      page,
+      limit,
+    );
+    const { data, total } = await this.broadcastService.listBroadcastUsers({
+      page: safePage,
+      limit: safeLimit,
+      search: query.search,
+      role: query.role,
+    });
+    return { data, meta: buildPaginationMeta(total, safePage, safeLimit) };
   }
 
   @Get('users')
@@ -139,8 +247,8 @@ export class AdminController {
       Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 10;
 
     const startDate = new Date();
-    startDate.setHours(0, 0, 0, 0);
-    startDate.setDate(startDate.getDate() - (rangeDays - 1));
+    startDate.setUTCHours(0, 0, 0, 0);
+    startDate.setUTCDate(startDate.getUTCDate() - (rangeDays - 1));
 
     const orderRepo = this.dataSource.getRepository(Order);
     const orderItemRepo = this.dataSource.getRepository(OrderItem);
@@ -160,8 +268,8 @@ export class AdminController {
           .addSelect('COUNT(order.id)', 'orderCount')
           .addSelect('COALESCE(SUM(order.totalAmount), 0)', 'revenue')
           .where('order.createdAt >= :startDate', { startDate })
-          .andWhere('order.status != :status', {
-            status: OrderStatus.CANCELLED,
+          .andWhere('order.status NOT IN (:...excludedStatuses)', {
+            excludedStatuses: [OrderStatus.CANCELLED, OrderStatus.REJECTED],
           })
           .groupBy('DATE(order.createdAt)')
           .orderBy('DATE(order.createdAt)', 'ASC')
@@ -172,7 +280,9 @@ export class AdminController {
           .select('item.productName', 'productName')
           .addSelect('SUM(item.quantity)', 'quantity')
           .addSelect('SUM(item.quantity * item.price)', 'revenue')
-          .where('order.status != :status', { status: OrderStatus.CANCELLED })
+          .where('order.status NOT IN (:...excludedStatuses)', {
+            excludedStatuses: [OrderStatus.CANCELLED, OrderStatus.REJECTED],
+          })
           .groupBy('item.productName')
           .orderBy('revenue', 'DESC')
           .limit(take)
@@ -261,8 +371,8 @@ export class AdminController {
     }> = [];
     for (let i = 0; i < rangeDays; i += 1) {
       const current = new Date(startDate);
-      current.setDate(startDate.getDate() + i);
-      const isoDate = current.toISOString().slice(0, 10);
+      current.setUTCDate(startDate.getUTCDate() + i);
+      const isoDate = this.toUtcDate(current);
       const values = salesMap.get(isoDate) ?? { orderCount: 0, revenue: 0 };
       salesTrend.push({ date: isoDate, ...values });
     }
@@ -294,5 +404,12 @@ export class AdminController {
       topProducts,
       bestCustomers,
     };
+  }
+
+  private toUtcDate(date: Date): string {
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 }

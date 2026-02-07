@@ -4,6 +4,7 @@ import { AbstractEntity } from '../../../common/entities/abstract.entity';
 export enum UserRole {
   CUSTOMER = 'customer',
   ADMIN = 'admin',
+  MERCHANT = 'merchant',
 }
 
 @Entity('users')

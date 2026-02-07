@@ -92,6 +92,13 @@ export default function OrdersPage() {
         queryFn: async () => (await api.get('/orders/status-counts')).data,
     });
 
+    const { data: me } = useQuery<{ role?: string }>({
+        queryKey: ['me'],
+        queryFn: async () => (await api.get('/auth/me')).data,
+        staleTime: 30_000,
+    });
+    const isAdmin = me?.role === 'admin';
+
     const deleteMutation = useMutation({
         mutationFn: async (orderId: number) => api.delete(`/orders/${orderId}`),
         onSuccess: () => {
@@ -210,13 +217,15 @@ export default function OrdersPage() {
             <div className="flex flex-col gap-2">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <h1 className="text-2xl font-bold">Order Management</h1>
-                    <Button
-                        color="primary"
-                        onPress={onCreateOpen}
-                        startContent={<Plus className="h-4 w-4" />}
-                    >
-                        Create Order
-                    </Button>
+                    {isAdmin ? (
+                        <Button
+                            color="primary"
+                            onPress={onCreateOpen}
+                            startContent={<Plus className="h-4 w-4" />}
+                        >
+                            Create Order
+                        </Button>
+                    ) : null}
                 </div>
                 <Tabs
                     aria-label="Order status"
@@ -267,7 +276,7 @@ export default function OrdersPage() {
             />
 
             <OrderDetailModal isOpen={isOpen} onClose={onClose} order={selectedOrder} />
-            <CreateOrderModal isOpen={isCreateOpen} onClose={onCreateClose} />
+            {isAdmin ? <CreateOrderModal isOpen={isCreateOpen} onClose={onCreateClose} /> : null}
 
             <Modal isOpen={isDeleteOpen} onClose={onDeleteClose} size="md">
                 <ModalContent>

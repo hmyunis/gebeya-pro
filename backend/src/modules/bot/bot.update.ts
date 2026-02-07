@@ -1,4 +1,4 @@
-import { Update, Ctx, Action } from 'nestjs-telegraf';
+import { Update, Ctx, Action, Start } from 'nestjs-telegraf';
 import { Context } from 'telegraf';
 import { OrdersService } from '../orders/orders.service';
 import { OrderStatus } from '../orders/entities/order.entity';
@@ -10,6 +10,14 @@ export class BotUpdate {
     private readonly ordersService: OrdersService,
     private readonly botService: BotService,
   ) {}
+
+  @Start()
+  async onStart(@Ctx() ctx: Context) {
+    await this.botService.registerSubscriber(ctx.from);
+    await ctx.reply(
+      'You are subscribed to announcements. You can mute or stop the bot anytime from Telegram settings.',
+    );
+  }
 
   @Action(/approve_order:(\d+)/)
   async onApprove(@Ctx() ctx: Context) {

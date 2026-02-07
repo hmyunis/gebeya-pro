@@ -45,13 +45,27 @@ const formatBirr = (value: number | string) => {
 };
 
 export default function DashboardHome() {
-  const { data: dashboard, isLoading } = useQuery({
-    queryKey: ['dashboard', 'overview'],
+  const meQuery = useQuery({
+    queryKey: ["me"],
+    queryFn: async () => (await api.get("/auth/me")).data as { role?: string },
+    staleTime: 30_000,
+  });
+
+  const isMerchant = meQuery.data?.role === "merchant";
+  const overviewEndpoint = isMerchant
+    ? "/merchants/dashboard-overview"
+    : "/admin/dashboard-overview";
+
+  const dashboardQuery = useQuery({
+    queryKey: ['dashboard', 'overview', overviewEndpoint],
     queryFn: async () =>
-      (await api.get('/admin/dashboard-overview', { params: { days: 7, limit: 10 } })).data,
+      (await api.get(overviewEndpoint, { params: { days: 7, limit: 10 } })).data,
     refetchInterval: 5000,
     staleTime: 4000,
+    enabled: meQuery.isSuccess,
   });
+  const dashboard = dashboardQuery.data;
+  const isLoading = meQuery.isLoading || dashboardQuery.isLoading;
 
   const stats = dashboard?.stats;
   const totals = dashboard?.statusSummary?.counts ?? {};

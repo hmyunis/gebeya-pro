@@ -27,6 +27,12 @@ export const envSchema = z.object({
   CORS_ORIGINS: z.string().optional(),
   COOKIE_SAMESITE: z.enum(['lax', 'strict', 'none']).optional(),
   COOKIE_SECURE: z.coerce.boolean().optional(),
+
+  // Broadcast worker
+  BROADCAST_RETENTION_DAYS: z.coerce.number().int().positive().optional(),
+  BROADCAST_BATCH_SIZE: z.coerce.number().int().positive().optional(),
+  BROADCAST_CONCURRENCY: z.coerce.number().int().positive().optional(),
+  BROADCAST_MAX_ATTEMPTS: z.coerce.number().int().positive().optional(),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

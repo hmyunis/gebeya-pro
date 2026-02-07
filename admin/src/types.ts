@@ -13,7 +13,18 @@ export interface Product {
   description: string;
   price: number;
   stock: number;
-  imageUrl: string;
+  isActive: boolean;
+  imageUrl?: string;
+  imageUrls?: string[] | null;
+  merchantId?: number | null;
+  createdById?: number | null;
+  bankAccountId?: number | null;
+  createdBy?: {
+    id: number;
+    firstName?: string | null;
+    loginUsername?: string | null;
+    username?: string | null;
+  } | null;
   category?: Category;
   createdAt: string;
 }
@@ -34,6 +45,8 @@ export interface PaginatedResponse<T> {
 
 export type OrderStatus = 'PENDING' | 'APPROVED' | 'SHIPPED' | 'CANCELLED' | 'REJECTED';
 
+export type OrderStatusCounts = Record<OrderStatus, number>;
+
 export interface OrderItem {
   id: number;
   productName: string;
@@ -45,8 +58,51 @@ export interface User {
   id: number;
   firstName: string;
   username?: string;
-  telegramId: string;
+  telegramId?: string | null;
+  role?: "admin" | "merchant" | "customer";
   avatarUrl?: string;
+  loginUsername?: string | null;
+  isBanned?: boolean;
+}
+
+export interface CustomerOrderStats {
+  totalOrders: number;
+  totalSpent: number;
+  lastOrderAt: string | null;
+  statusCounts: OrderStatusCounts;
+}
+
+export interface CustomerListItem extends User {
+  role: 'customer';
+  createdAt: string;
+  updatedAt: string;
+  orderStats: CustomerOrderStats;
+}
+
+export interface CustomerReportPoint {
+  month: string;
+  label: string;
+  orderCount: number;
+  totalSpent: number;
+}
+
+export interface CustomerDetailReport {
+  totalOrders: number;
+  totalSpent: number;
+  averageOrderValue: number;
+  firstOrderAt: string | null;
+  lastOrderAt: string | null;
+  statusCounts: OrderStatusCounts;
+  monthlyTrend: CustomerReportPoint[];
+  topShippingAddresses: Array<{
+    shippingAddress: string;
+    count: number;
+  }>;
+}
+
+export interface CustomerDetailResponse {
+  customer: CustomerListItem;
+  report: CustomerDetailReport;
 }
 
 export interface Order {
@@ -82,6 +138,44 @@ export interface ActivityLog {
   payload: string | null;
   ipAddress: string | null;
   timestamp: string;
+}
+
+export interface MerchantProfile {
+  id: number;
+  userId: number;
+  phoneNumber: string;
+  itemTypes: string[];
+  address: string;
+  profilePictureUrl?: string | null;
+}
+
+export interface MerchantUser extends User {
+  role: "merchant";
+  merchantProfile?: MerchantProfile;
+}
+
+export type MerchantApplicationStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+export interface MerchantApplication {
+  id: number;
+  fullName: string;
+  phoneNumber: string;
+  itemTypes: string[];
+  address: string;
+  profilePictureUrl?: string | null;
+  telegramId: string;
+  telegramUsername?: string | null;
+  telegramFirstName?: string | null;
+  telegramPhotoUrl?: string | null;
+  status: MerchantApplicationStatus;
+  merchantUserId?: number | null;
+  processedByUserId?: number | null;
+  processedAt?: string | null;
+  reviewNote?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  merchantUser?: User | null;
+  processedBy?: User | null;
 }
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';

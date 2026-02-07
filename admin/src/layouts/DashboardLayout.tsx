@@ -1,53 +1,77 @@
 import { useEffect, useState } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
-import { useIsFetching, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { api, clearAuthToken } from "../lib/api";
 import { getImageUrl } from "../types";
 import {
   Navbar,
   NavbarContent,
   Avatar,
-  Spinner,
   Button,
   Dropdown,
   DropdownTrigger,
   DropdownMenu,
   DropdownItem,
   Tooltip,
+  Chip,
 } from "@heroui/react";
 import { Drawer, DrawerBody, DrawerContent, DrawerHeader } from "@heroui/drawer";
-import { CaretDown, House, Package, ShoppingCart, SignOut, UserCircle, FileText, List, SidebarSimple, Bank, ChatText } from "@phosphor-icons/react";
+import { CaretDown, House, Package, ShoppingCart, SignOut, UserCircle, FileText, List, SidebarSimple, Bank, ChatText, Storefront, Megaphone, UsersThree } from "@phosphor-icons/react";
 import { cn } from "../lib/utils";
+import DashboardShellSkeleton from "./DashboardShellSkeleton";
 
 export default function DashboardLayout() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const { data: user, isLoading, isError } = useQuery({
+  const { data: user, isLoading } = useQuery({
     queryKey: ['me'],
     queryFn: async () => {
       const res = await api.get('/auth/me');
-      return res.data;
+      return res.data as {
+        role?: "admin" | "merchant" | "customer";
+        firstName?: string;
+        username?: string;
+        loginUsername?: string;
+        avatarUrl?: string;
+      };
     },
     retry: false,
+    staleTime: 60_000,
   });
 
-  if (!isLoading && (isError || !user)) {
+  if (isLoading && !user) {
+    return <DashboardShellSkeleton />;
+  }
+
+  if (!user) {
     return null;
   }
+
+  const role = user?.role ?? "admin";
 
   const menuItems = [
     { name: "Dashboard", path: "/", icon: <House className="h-5 w-5" /> },
     { name: "Orders", path: "/orders", icon: <ShoppingCart className="h-5 w-5" /> },
     { name: "Products", path: "/products", icon: <Package className="h-5 w-5" /> },
     { name: "Bank Accounts", path: "/bank-accounts", icon: <Bank className="h-5 w-5" /> },
-    { name: "Contact Messages", path: "/contact-messages", icon: <ChatText className="h-5 w-5" /> },
-    { name: "Activity Logs", path: "/activity-logs", icon: <FileText className="h-5 w-5" /> },
     { name: "Profile", path: "/profile", icon: <UserCircle className="h-5 w-5" /> },
+    ...(role === "admin"
+      ? [
+          { name: "Merchants", path: "/merchants", icon: <Storefront className="h-5 w-5" /> },
+          { name: "Customers", path: "/customers", icon: <UsersThree className="h-5 w-5" /> },
+          { name: "Contact Messages", path: "/contact-messages", icon: <ChatText className="h-5 w-5" /> },
+          {
+            name: "Announcements",
+            path: "/announcements",
+            icon: <Megaphone className="h-5 w-5" />,
+            badge: "BETA",
+          },
+          { name: "Activity Logs", path: "/activity-logs", icon: <FileText className="h-5 w-5" /> },
+        ]
+      : []),
   ];
 
-  const isFetching = useIsFetching();
-  const [isRouteLoading, setIsRouteLoading] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
@@ -62,18 +86,6 @@ export default function DashboardLayout() {
     window.localStorage.setItem("adminSidebarCollapsed", String(isCollapsed));
   }, [isCollapsed]);
 
-  useEffect(() => {
-    setIsRouteLoading(true);
-  }, [location.pathname]);
-
-  useEffect(() => {
-    if (isFetching === 0 && !isLoading) {
-      const timer = setTimeout(() => setIsRouteLoading(false), 150);
-      return () => clearTimeout(timer);
-    }
-    return undefined;
-  }, [isFetching, isLoading]);
-
   const handleLogout = async () => {
     await api.post('/auth/logout');
     clearAuthToken();
@@ -81,17 +93,17 @@ export default function DashboardLayout() {
   };
 
   const displayName = user?.firstName ?? "Admin";
-  const displayUsername = user?.username ?? "admin";
+  const displayUsername = user?.loginUsername ?? user?.username ?? role;
   const avatarUrl = user?.avatarUrl ? getImageUrl(user.avatarUrl) : undefined;
   const initials = displayName
     .split(" ")
     .filter(Boolean)
-    .map((part: string[]) => part[0]?.toUpperCase())
+    .map((part: string) => part[0]?.toUpperCase())
     .join("")
     .slice(0, 2);
 
   return (
-    <div className="flex min-h-screen w-full bg-background">
+    <div className="min-h-screen w-full overflow-x-hidden bg-background">
       <aside
         className={cn(
           "fixed left-0 top-0 z-40 hidden h-screen border-r border-default-200 bg-background py-6 transition-all duration-200 lg:flex lg:flex-col",
@@ -119,7 +131,18 @@ export default function DashboardLayout() {
                 startContent={!isCollapsed ? item.icon : undefined}
                 aria-label={item.name}
               >
-                {isCollapsed ? item.icon : item.name}
+                {isCollapsed ? (
+                  item.icon
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <span>{item.name}</span>
+                    {item.badge ? (
+                      <Chip size="sm" variant="flat" color="secondary">
+                        {item.badge}
+                      </Chip>
+                    ) : null}
+                  </span>
+                )}
               </Button>
             );
 
@@ -164,7 +187,12 @@ export default function DashboardLayout() {
         </div>
       </aside>
 
-      <main className={cn("w-full transition-all duration-200", isCollapsed ? "lg:ml-20" : "lg:ml-64")}>
+      <main
+        className={cn(
+          "min-h-screen min-w-0 transition-all duration-200",
+          isCollapsed ? "lg:ml-20" : "lg:ml-64",
+        )}
+      >
         <Navbar isBordered maxWidth="full" className="bg-background/70 backdrop-blur-md">
           <NavbarContent justify="start">
             <Button
@@ -213,7 +241,9 @@ export default function DashboardLayout() {
                 >
                   <div className="flex flex-col">
                     <span className="text-sm font-medium">{displayName}</span>
-                    <span className="text-xs text-default-500">View profile</span>
+                    <span className="text-xs text-default-500">
+                      {role === "admin" ? "Admin" : "Merchant"} profile
+                    </span>
                   </div>
                 </DropdownItem>
                 <DropdownItem
@@ -229,14 +259,8 @@ export default function DashboardLayout() {
           </NavbarContent>
         </Navbar>
 
-        <div className="p-6">
-          {isLoading || isRouteLoading ? (
-            <div className="flex min-h-[60vh] items-center justify-center">
-              <Spinner size="lg" />
-            </div>
-          ) : (
-            <Outlet />
-          )}
+        <div className="min-w-0 p-6">
+          <Outlet />
         </div>
       </main>
 
@@ -261,7 +285,14 @@ export default function DashboardLayout() {
                   className="justify-start"
                   startContent={item.icon}
                 >
-                  {item.name}
+                  <span className="flex items-center gap-2">
+                    <span>{item.name}</span>
+                    {item.badge ? (
+                      <Chip size="sm" variant="flat" color="secondary">
+                        {item.badge}
+                      </Chip>
+                    ) : null}
+                  </span>
                 </Button>
               </Link>
             ))}

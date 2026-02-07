@@ -3,9 +3,14 @@ export type Product = {
   name: string;
   price: number | string;
   imageUrl?: string;
+  imageUrls?: string[] | null;
   description?: string;
   category?: { id?: number; name?: string };
   stock?: number;
+  merchantId?: number | null;
+  createdById?: number | null;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type Category = {
@@ -20,4 +25,3 @@ export type PriceRange = {
   max: number;
   label?: string;
 };
-

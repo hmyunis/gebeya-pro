@@ -23,10 +23,6 @@ async function bootstrap() {
   });
 
   const defaultOrigins = [
-    'https://admin.mycharitiesfoundation.com',
-    'https://public.mycharitiesfoundation.com',
-    'http://admin.mycharitiesfoundation.com',
-    'http://public.mycharitiesfoundation.com',
     'http://localhost:4321',
     'http://localhost:5173',
   ];
@@ -37,7 +33,7 @@ async function bootstrap() {
   const allowedOrigins = [...new Set([...defaultOrigins, ...envOrigins])];
 
   app.enableCors({
-    origin: allowedOrigins,
+    origin: true,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: [

@@ -5,6 +5,13 @@ export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/v1
 
 const AUTH_TOKEN_STORAGE_KEY = 'adminAuthToken';
 
+function getAdminLoginPath(): string {
+  const pathname = window.location.pathname;
+  const isAdminSubpath =
+    pathname === '/admin' || pathname.startsWith('/admin/');
+  return isAdminSubpath ? '/admin/login' : '/login';
+}
+
 export const api = axios.create({
   baseURL: API_URL,
   withCredentials: true, // Crucial: Sends the JWT Cookie
@@ -53,8 +60,9 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       clearAuthToken();
       // Redirect to login if session expires
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
+      const loginPath = getAdminLoginPath();
+      if (window.location.pathname !== loginPath) {
+        window.location.assign(loginPath);
       }
     }
     return Promise.reject(error);

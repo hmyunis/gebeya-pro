@@ -90,7 +90,7 @@ export default function DashboardLayout() {
   const handleLogout = async () => {
     await api.post('/auth/logout');
     clearAuthToken();
-    window.location.href = '/login';
+    navigate('/login', { replace: true });
   };
 
   const displayName = user?.firstName ?? "Admin";

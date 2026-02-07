@@ -20,13 +20,15 @@ import {
   Basket,
   CalendarBlank,
   ClockCounterClockwise,
-  LockSimpleOpen,
   ListChecks,
+  LockSimpleOpen,
   MapPinLine,
   MoneyWavy,
+  Package,
   Prohibit,
   TrendUp,
   UserCircle,
+  UsersThree,
 } from "@phosphor-icons/react";
 import {
   CartesianGrid,
@@ -40,7 +42,7 @@ import {
 } from "recharts";
 import { api } from "../../lib/api";
 import type {
-  CustomerDetailResponse,
+  MerchantDetailResponse,
   Order,
   OrderStatus,
   PaginatedResponse,
@@ -49,12 +51,12 @@ import { getImageUrl } from "../../types";
 import { DataTable } from "../table/DataTable";
 import { DataTablePagination } from "../table/DataTablePagination";
 
-interface CustomerDetailModalProps {
-  customerId: number | null;
+interface MerchantDetailModalProps {
+  merchantId: number | null;
   isOpen: boolean;
   onClose: () => void;
-  onToggleBan: (customerId: number, banned: boolean, customerName: string) => void;
-  isTogglingBan: boolean;
+  onToggleArchive: (merchantId: number, archived: boolean) => void;
+  isTogglingArchive: boolean;
 }
 
 type HistoryStatusFilter = "ALL" | OrderStatus;
@@ -99,13 +101,13 @@ const formatDate = (value?: string | null) => {
   });
 };
 
-export default function CustomerDetailModal({
-  customerId,
+export default function MerchantDetailModal({
+  merchantId,
   isOpen,
   onClose,
-  onToggleBan,
-  isTogglingBan,
-}: CustomerDetailModalProps) {
+  onToggleArchive,
+  isTogglingArchive,
+}: MerchantDetailModalProps) {
   const [showOrderHistory, setShowOrderHistory] = useState(false);
   const [ordersPage, setOrdersPage] = useState(1);
   const [ordersLimit, setOrdersLimit] = useState(5);
@@ -117,23 +119,23 @@ export default function CustomerDetailModal({
     setOrdersPage(1);
     setOrdersLimit(5);
     setOrdersStatus("ALL");
-  }, [isOpen, customerId]);
+  }, [isOpen, merchantId]);
 
   useEffect(() => {
     setOrdersPage(1);
   }, [ordersStatus]);
 
-  const detailQuery = useQuery<CustomerDetailResponse>({
-    queryKey: ["admin", "customers", "detail", customerId],
-    queryFn: async () => (await api.get(`/admin/customers/${customerId}`)).data,
-    enabled: isOpen && customerId !== null,
+  const detailQuery = useQuery<MerchantDetailResponse>({
+    queryKey: ["admin", "merchants", "detail", merchantId],
+    queryFn: async () => (await api.get(`/merchants/details/${merchantId}`)).data,
+    enabled: isOpen && merchantId !== null,
   });
 
   const ordersQuery = useQuery<PaginatedResponse<Order>>({
-    queryKey: ["admin", "customers", customerId, "orders", ordersPage, ordersLimit, ordersStatus],
+    queryKey: ["admin", "merchants", merchantId, "orders", ordersPage, ordersLimit, ordersStatus],
     queryFn: async () =>
       (
-        await api.get(`/admin/customers/${customerId}/orders`, {
+        await api.get(`/merchants/details/${merchantId}/orders`, {
           params: {
             page: ordersPage,
             limit: ordersLimit,
@@ -141,11 +143,11 @@ export default function CustomerDetailModal({
           },
         })
       ).data,
-    enabled: isOpen && customerId !== null && showOrderHistory,
+    enabled: isOpen && merchantId !== null && showOrderHistory,
   });
 
   const detail = detailQuery.data;
-  const customer = detail?.customer;
+  const merchant = detail?.merchant;
   const report = detail?.report;
   const orders = ordersQuery.data?.data ?? [];
   const ordersMeta = ordersQuery.data?.meta;
@@ -163,6 +165,17 @@ export default function CustomerDetailModal({
       {
         header: "Order",
         cell: ({ row }) => <span className="font-mono text-default-500">#00{row.original.id}</span>,
+      },
+      {
+        header: "Customer",
+        cell: ({ row }) => (
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold">{row.original.user.firstName || "Unknown customer"}</p>
+            <p className="truncate text-xs text-default-400">
+              @{row.original.user.loginUsername || row.original.user.username || "no_username"}
+            </p>
+          </div>
+        ),
       },
       {
         header: "Status",
@@ -201,9 +214,9 @@ export default function CustomerDetailModal({
     >
       <ModalContent>
         <ModalHeader className="flex flex-col gap-1">
-          <span className="text-xl font-bold">Customer Details</span>
+          <span className="text-xl font-bold">Merchant Details</span>
           <span className="text-sm text-default-500">
-            Full profile, order performance, and activity report.
+            Full profile, business metrics, and order performance report.
           </span>
         </ModalHeader>
         <ModalBody className="pb-6">
@@ -217,75 +230,82 @@ export default function CustomerDetailModal({
               </div>
               <Skeleton className="h-64 w-full rounded-xl" />
             </div>
-          ) : customer && report ? (
+          ) : merchant && report ? (
             <div className="space-y-5 px-6">
               <Card className="border border-default-200 shadow-none">
                 <CardBody className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex min-w-0 items-center gap-3">
                     <Avatar
                       size="lg"
-                      src={customer.avatarUrl ? getImageUrl(customer.avatarUrl) : undefined}
-                      name={customer.firstName || "C"}
-                      icon={!customer.avatarUrl ? <UserCircle className="h-6 w-6" /> : undefined}
+                      src={merchant.avatarUrl ? getImageUrl(merchant.avatarUrl) : undefined}
+                      name={merchant.firstName || "M"}
+                      icon={!merchant.avatarUrl ? <UserCircle className="h-6 w-6" /> : undefined}
                     />
                     <div className="min-w-0">
-                      <p className="truncate text-lg font-semibold">{customer.firstName || "Unnamed customer"}</p>
+                      <p className="truncate text-lg font-semibold">{merchant.firstName || "Unnamed merchant"}</p>
                       <p className="truncate text-sm text-default-500">
-                        @{customer.loginUsername || customer.username || "no_username"}
+                        @{merchant.loginUsername || merchant.username || "no_username"}
                       </p>
                       <p className="truncate text-xs text-default-400">
-                        Telegram ID: {customer.telegramId || "not linked"}
+                        Telegram ID: {merchant.telegramId || "not linked"}
+                      </p>
+                      <p className="truncate text-xs text-default-400">
+                        Phone: {merchant.merchantProfile?.phoneNumber || "not provided"}
                       </p>
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <Chip size="sm" variant="flat" color={customer.isBanned ? "warning" : "success"}>
-                      {customer.isBanned ? "Banned" : "Active"}
+                    <Chip size="sm" variant="flat" color={merchant.isBanned ? "warning" : "success"}>
+                      {merchant.isBanned ? "Archived" : "Active"}
                     </Chip>
                     <Chip size="sm" variant="flat">
-                      Joined {new Date(customer.createdAt).toLocaleDateString()}
+                      Joined {new Date(merchant.createdAt).toLocaleDateString()}
                     </Chip>
                     <Button
                       size="sm"
-                      color={customer.isBanned ? "success" : "warning"}
+                      color={merchant.isBanned ? "success" : "warning"}
                       variant="flat"
-                      isLoading={isTogglingBan}
+                      isLoading={isTogglingArchive}
                       startContent={
-                        customer.isBanned ? (
+                        merchant.isBanned ? (
                           <LockSimpleOpen className="h-4 w-4" />
                         ) : (
                           <Prohibit className="h-4 w-4" />
                         )
                       }
-                      onPress={() =>
-                        onToggleBan(
-                          customer.id,
-                          !customer.isBanned,
-                          customer.firstName || "this customer",
-                        )
-                      }
+                      onPress={() => onToggleArchive(merchant.id, !merchant.isBanned)}
                     >
-                      {customer.isBanned ? "Unban" : "Ban"}
+                      {merchant.isBanned ? "Unarchive" : "Archive"}
                     </Button>
                   </div>
                 </CardBody>
               </Card>
 
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <SummaryStat
                   label="Total orders"
                   value={report.totalOrders.toLocaleString()}
                   icon={<Basket className="h-4 w-4 text-primary" />}
                 />
                 <SummaryStat
-                  label="Total spent"
-                  value={`${formatBirr(report.totalSpent)} Birr`}
+                  label="Total revenue"
+                  value={`${formatBirr(report.totalRevenue)} Birr`}
                   icon={<MoneyWavy className="h-4 w-4 text-success" />}
                 />
                 <SummaryStat
                   label="Average order"
                   value={`${formatBirr(report.averageOrderValue)} Birr`}
                   icon={<TrendUp className="h-4 w-4 text-secondary" />}
+                />
+                <SummaryStat
+                  label="Customers served"
+                  value={report.customerCount.toLocaleString()}
+                  icon={<UsersThree className="h-4 w-4 text-warning" />}
+                />
+                <SummaryStat
+                  label="Total products"
+                  value={report.productSummary.totalProducts.toLocaleString()}
+                  icon={<Package className="h-4 w-4 text-default-600" />}
                 />
                 <SummaryStat
                   label="Last order"
@@ -298,7 +318,7 @@ export default function CustomerDetailModal({
                 <CardBody className="space-y-3 p-4">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <p className="text-sm text-default-500">Order status report</p>
+                      <p className="text-sm text-default-500">Merchant order status report</p>
                       <h3 className="text-base font-semibold">Last {report.monthlyTrend.length} months trend</h3>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
@@ -326,14 +346,14 @@ export default function CustomerDetailModal({
                             name: string | undefined,
                           ) => {
                             const safeValue = value ?? 0;
-                            if (name === "totalSpent") {
-                              return [`${formatBirr(Number(safeValue))} Birr`, "Spent"];
+                            if (name === "totalRevenue") {
+                              return [`${formatBirr(Number(safeValue))} Birr`, "Revenue"];
                             }
                             return [`${safeValue}`, "Orders"];
                           }}
                         />
                         <Legend
-                          formatter={(value) => (value === "totalSpent" ? "Spent (Birr)" : "Orders")}
+                          formatter={(value) => (value === "totalRevenue" ? "Revenue (Birr)" : "Orders")}
                         />
                         <Line
                           yAxisId="left"
@@ -347,8 +367,8 @@ export default function CustomerDetailModal({
                         />
                         <Line
                           yAxisId="right"
-                          dataKey="totalSpent"
-                          name="totalSpent"
+                          dataKey="totalRevenue"
+                          name="totalRevenue"
                           type="monotone"
                           stroke="#17c964"
                           strokeWidth={2.5}
@@ -360,29 +380,80 @@ export default function CustomerDetailModal({
                   </div>
                   <div className="grid gap-2 sm:grid-cols-2">
                     <div className="rounded-lg bg-default-50 p-3">
-                      <p className="text-xs font-semibold uppercase text-default-500">First Order</p>
-                      <p className="mt-1 text-sm">{formatDate(report.firstOrderAt)}</p>
+                      <p className="text-xs font-semibold uppercase text-default-500">Business Profile</p>
+                      <p className="mt-1 text-xs text-default-700">
+                        Item types: {merchant.merchantProfile?.itemTypes?.join(", ") || "Not specified"}
+                      </p>
+                      <p className="mt-1 flex items-start gap-1 text-xs text-default-700">
+                        <MapPinLine className="mt-0.5 h-3.5 w-3.5 shrink-0 text-default-500" />
+                        <span>{merchant.merchantProfile?.address || "Address not provided"}</span>
+                      </p>
                     </div>
                     <div className="rounded-lg bg-default-50 p-3">
-                      <p className="text-xs font-semibold uppercase text-default-500">Top Shipping Addresses</p>
-                      {report.topShippingAddresses.length ? (
-                        <div className="mt-1 space-y-1">
-                          {report.topShippingAddresses.map((address) => (
-                            <p key={address.shippingAddress} className="flex items-start gap-1 text-xs text-default-700">
-                              <MapPinLine className="mt-0.5 h-3.5 w-3.5 shrink-0 text-default-500" />
-                              <span className="line-clamp-2">
-                                {address.shippingAddress} ({address.count})
-                              </span>
-                            </p>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="mt-1 text-xs text-default-400">No shipping addresses yet.</p>
-                      )}
+                      <p className="text-xs font-semibold uppercase text-default-500">Product Snapshot</p>
+                      <p className="mt-1 text-xs text-default-700">
+                        Active: {report.productSummary.activeProducts} · Inactive:{" "}
+                        {report.productSummary.inactiveProducts}
+                      </p>
+                      <p className="mt-1 text-xs text-default-700">
+                        Out of stock: {report.productSummary.outOfStockProducts}
+                      </p>
+                      <p className="mt-1 text-xs text-default-500">
+                        Last product added: {formatDate(report.productSummary.lastProductCreatedAt)}
+                      </p>
                     </div>
                   </div>
                 </CardBody>
               </Card>
+
+              <div className="grid gap-3 lg:grid-cols-2">
+                <Card className="border border-default-200 shadow-none">
+                  <CardBody className="space-y-2 p-4">
+                    <h3 className="text-sm font-semibold">Top Customers</h3>
+                    {report.topCustomers.length ? (
+                      <div className="space-y-2">
+                        {report.topCustomers.map((customer) => (
+                          <div
+                            key={`${customer.customerId}-${customer.totalSpent}`}
+                            className="rounded-lg border border-default-200 px-3 py-2"
+                          >
+                            <p className="text-sm font-semibold">{customer.firstName}</p>
+                            <p className="text-xs text-default-500">
+                              @{customer.loginUsername || customer.username || "no_username"}
+                            </p>
+                            <p className="text-xs text-default-600">
+                              {customer.totalOrders} orders · {formatBirr(customer.totalSpent)} Birr · last{" "}
+                              {formatDate(customer.lastOrderAt)}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-default-400">No customer activity yet.</p>
+                    )}
+                  </CardBody>
+                </Card>
+
+                <Card className="border border-default-200 shadow-none">
+                  <CardBody className="space-y-2 p-4">
+                    <h3 className="text-sm font-semibold">Top Shipping Addresses</h3>
+                    {report.topShippingAddresses.length ? (
+                      <div className="space-y-1">
+                        {report.topShippingAddresses.map((address) => (
+                          <p key={address.shippingAddress} className="flex items-start gap-1 text-xs text-default-700">
+                            <MapPinLine className="mt-0.5 h-3.5 w-3.5 shrink-0 text-default-500" />
+                            <span className="line-clamp-2">
+                              {address.shippingAddress} ({address.count})
+                            </span>
+                          </p>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-default-400">No shipping addresses yet.</p>
+                    )}
+                  </CardBody>
+                </Card>
+              </div>
 
               <Divider />
 
@@ -390,9 +461,7 @@ export default function CustomerDetailModal({
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h3 className="text-base font-semibold">Order History</h3>
-                    <p className="text-sm text-default-500">
-                      Hidden by default to keep the view focused.
-                    </p>
+                    <p className="text-sm text-default-500">Hidden by default to keep the view focused.</p>
                   </div>
                   <Button
                     variant={showOrderHistory ? "flat" : "solid"}
@@ -426,7 +495,7 @@ export default function CustomerDetailModal({
                         <div className="rounded-lg bg-default-50 px-3 py-2 text-xs text-default-500">
                           <p className="flex items-center gap-1">
                             <ListChecks className="h-3.5 w-3.5" />
-                            Use status filter and pages to review activity.
+                            Use status filter and pages to review merchant orders.
                           </p>
                         </div>
                       </div>
@@ -460,7 +529,7 @@ export default function CustomerDetailModal({
             </div>
           ) : (
             <div className="px-6 py-10 text-center text-default-500">
-              Unable to load customer details.
+              Unable to load merchant details.
             </div>
           )}
         </ModalBody>

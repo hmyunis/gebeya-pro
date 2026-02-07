@@ -15,7 +15,7 @@ export class BotUpdate {
   async onStart(@Ctx() ctx: Context) {
     await this.botService.registerSubscriber(ctx.from);
     await ctx.reply(
-      'You are subscribed to announcements. You can mute or stop the bot anytime from Telegram settings.',
+      '👋 Welcome! You are now subscribed to Gebeya Pro updates.\n\nYou may receive announcements and order notifications here. You can mute or stop this bot anytime from Telegram settings.',
     );
   }
 
@@ -44,7 +44,7 @@ export class BotUpdate {
     }
 
     await ctx.editMessageText(
-      `✅ <b>Order #${orderId} Approved</b>\nProcessed by: @${ctx.from?.username ?? 'unknown'}`,
+      `✅ <b>Order #${orderId} approved</b>\nProcessed by: @${ctx.from?.username ?? 'unknown'}\nCustomer notification has been sent.`,
       { parse_mode: 'HTML' },
     );
   }
@@ -73,8 +73,11 @@ export class BotUpdate {
       );
     }
 
-    await ctx.editMessageText(`❌ <b>Order #${orderId} Rejected</b>`, {
-      parse_mode: 'HTML',
-    });
+    await ctx.editMessageText(
+      `❌ <b>Order #${orderId} rejected</b>\nCustomer notification has been sent.`,
+      {
+        parse_mode: 'HTML',
+      },
+    );
   }
 }

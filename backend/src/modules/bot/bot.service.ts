@@ -93,13 +93,25 @@ export class BotService {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
+    const dashboardLoginUrl = this.getDashboardLoginUrl();
+    const customerName = this.escapeHtml(order.user.firstName || 'Customer');
+    const customerUsername = this.escapeHtml(
+      order.user.username ? `@${order.user.username}` : 'no_username',
+    );
+    const safeAddress = this.escapeHtml(order.shippingAddress || 'Not provided');
+    const safeDashboardLoginUrl = this.escapeHtml(dashboardLoginUrl);
 
     const message = `
-📦 <b>New Order #${order.id}</b>
-👤 User: ${order.user.firstName} (@${order.user.username || 'N/A'})
-💰 Total: ${formattedTotal} Birr
-📍 Address: ${order.shippingAddress}
-${order.receiptUrl ? '🧾 Receipt: attached below' : '🧾 Receipt: (none)'}
+🛎️ <b>New order received</b>
+
+Order: <b>#${order.id}</b>
+Customer: ${customerName} (${customerUsername})
+Total: <b>${formattedTotal} Birr</b>
+Delivery address: <code>${safeAddress}</code>
+Receipt: ${order.receiptUrl ? 'attached below' : 'not provided'}
+
+<b>Next step:</b> Use the buttons below to approve or reject.
+Dashboard login: <a href="${safeDashboardLoginUrl}">${safeDashboardLoginUrl}</a>
 
 <i>Items:</i>
 ${itemsList}
@@ -159,13 +171,25 @@ ${itemsList}
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
+    const dashboardLoginUrl = this.getDashboardLoginUrl();
+    const customerName = this.escapeHtml(order.user.firstName || 'Customer');
+    const customerUsername = this.escapeHtml(
+      order.user.username ? `@${order.user.username}` : 'no_username',
+    );
+    const safeAddress = this.escapeHtml(order.shippingAddress || 'Not provided');
+    const safeDashboardLoginUrl = this.escapeHtml(dashboardLoginUrl);
 
     const message = `
-📦 <b>New Merchant Order #${order.id}</b>
-👤 Customer: ${order.user.firstName} (@${order.user.username || 'N/A'})
-💰 Total: ${formattedTotal} Birr
-📍 Address: ${order.shippingAddress}
-${order.receiptUrl ? '🧾 Receipt: attached below' : '🧾 Receipt: (none)'}
+📦 <b>New order for your store</b>
+
+Order: <b>#${order.id}</b>
+Customer: ${customerName} (${customerUsername})
+Total: <b>${formattedTotal} Birr</b>
+Delivery address: <code>${safeAddress}</code>
+Receipt: ${order.receiptUrl ? 'attached below' : 'not provided'}
+
+<b>Action required:</b> log in to your dashboard to review and update this order.
+Dashboard login: <a href="${safeDashboardLoginUrl}">${safeDashboardLoginUrl}</a>
 
 <i>Items:</i>
 ${itemsList}
@@ -204,13 +228,26 @@ ${itemsList}
     username: string,
     password: string,
   ): Promise<void> {
+    const dashboardLoginUrl = this.getDashboardLoginUrl();
+    const safeDashboardLoginUrl = this.escapeHtml(dashboardLoginUrl);
+    const safeUsername = this.escapeHtml(username);
+    const safePassword = this.escapeHtml(password);
     const message = `
-✅ <b>Your merchant account is ready</b>
+🎉 <b>Your merchant account is ready</b>
 
-Username: <code>${username}</code>
-Password: <code>${password}</code>
+You can now sign in to the merchant dashboard.
+<b>Login URL</b> (same URL used by admins and merchants):
+<a href="${safeDashboardLoginUrl}">${safeDashboardLoginUrl}</a>
 
-Use these credentials in the merchant dashboard and change your password after first login.
+Username: <code>${safeUsername}</code>
+Password: <code>${safePassword}</code>
+
+<b>Next steps:</b>
+1. Open the login URL above.
+2. Sign in with the credentials.
+3. Go to Profile and change your password immediately.
+
+If anything fails, contact support/admin and share this message.
     `;
 
     await this.bot.telegram.sendMessage(telegramId, message, {
@@ -223,9 +260,24 @@ Use these credentials in the merchant dashboard and change your password after f
     orderId: number,
     status: string,
   ): Promise<void> {
+    const normalizedStatus = String(status || '').toUpperCase();
+    const statusLabel = this.escapeHtml(normalizedStatus || 'UPDATED');
+    const followUp =
+      normalizedStatus === 'APPROVED'
+        ? 'Your order is confirmed and will be prepared soon.'
+        : normalizedStatus === 'SHIPPED'
+          ? 'Your order is on the way.'
+          : normalizedStatus === 'REJECTED'
+            ? 'Please contact support if you need help or want to reorder.'
+            : normalizedStatus === 'CANCELLED'
+              ? 'If this was unexpected, contact support.'
+              : 'Thanks for shopping with us.';
+
     await this.bot.telegram.sendMessage(
       telegramId,
-      `ℹ️ Your Order #${orderId} is now: <b>${status}</b>`,
+      `ℹ️ <b>Order update</b>\nOrder <b>#${orderId}</b> is now <b>${statusLabel}</b>.\n${this.escapeHtml(
+        followUp,
+      )}`,
       { parse_mode: 'HTML' },
     );
   }
@@ -262,5 +314,58 @@ Use these credentials in the merchant dashboard and change your password after f
     if (!resolved.startsWith(allowedRoot)) return null;
     if (!fs.existsSync(resolved)) return null;
     return resolved;
+  }
+
+  private getDashboardLoginUrl(): string {
+    const base = this.getDashboardBaseUrl();
+    if (base.toLowerCase().endsWith('/login')) {
+      return base;
+    }
+    return `${base}/login`;
+  }
+
+  private getDashboardBaseUrl(): string {
+    const directUrl = this.normalizeHttpUrl(
+      this.configService.get<string>('DASHBOARD_URL') ?? '',
+    );
+    if (directUrl) {
+      return directUrl;
+    }
+
+    const corsOrigins = (this.configService.get<string>('CORS_ORIGINS') ?? '')
+      .split(',')
+      .map((origin) => this.normalizeHttpUrl(origin))
+      .filter((origin): origin is string => Boolean(origin));
+
+    const preferredOrigin =
+      corsOrigins.find((origin) => origin.toLowerCase().includes('admin')) ??
+      corsOrigins.find((origin) => !origin.includes('localhost')) ??
+      corsOrigins[0];
+
+    return preferredOrigin ?? 'http://localhost:5173';
+  }
+
+  private normalizeHttpUrl(rawUrl: string): string | null {
+    const trimmed = String(rawUrl ?? '').trim();
+    if (!trimmed) return null;
+
+    try {
+      const parsed = new URL(trimmed);
+      if (!['http:', 'https:'].includes(parsed.protocol)) {
+        return null;
+      }
+      return parsed.toString().replace(/\/$/, '');
+    } catch {
+      return null;
+    }
+  }
+
+  private escapeHtml(value: string): string {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 }

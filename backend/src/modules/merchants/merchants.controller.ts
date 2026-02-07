@@ -31,6 +31,7 @@ import {
 } from './entities/merchant-application.entity';
 import { ApproveMerchantApplicationDto } from './dto/approve-merchant-application.dto';
 import { UpdateMerchantDto } from './dto/update-merchant.dto';
+import { OrderStatus } from '../orders/entities/order.entity';
 import {
   coerceMultipartFieldValue,
   readMultipartFileToBuffer,
@@ -101,6 +102,36 @@ export class MerchantsController {
       req.user.userId,
       profilePicture,
     );
+  }
+
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Get('details/:id')
+  getMerchantDetail(@Param('id', ParseIntPipe) id: number) {
+    return this.merchantsService.getMerchantDetail(id);
+  }
+
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Get('details/:id/orders')
+  async listMerchantOrders(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('status') status?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const parsedStatus = this.parseOrderStatus(status);
+    const { page: safePage, limit: safeLimit } = normalizePagination(
+      page,
+      limit,
+    );
+    const { data, total } = await this.merchantsService.listMerchantOrders(
+      id,
+      safePage,
+      safeLimit,
+      parsedStatus,
+    );
+    return { data, meta: buildPaginationMeta(total, safePage, safeLimit) };
   }
 
   @UseGuards(AuthGuard('jwt'), RolesGuard)
@@ -245,6 +276,15 @@ export class MerchantsController {
       );
     }
     return normalized;
+  }
+
+  private parseOrderStatus(status?: string): OrderStatus | undefined {
+    if (!status) return undefined;
+    const upper = status.toUpperCase();
+    if (!Object.values(OrderStatus).includes(upper as OrderStatus)) {
+      throw new BadRequestException('Invalid order status');
+    }
+    return upper as OrderStatus;
   }
 
   private async parseMultipartOrJson(req: FastifyRequest): Promise<{

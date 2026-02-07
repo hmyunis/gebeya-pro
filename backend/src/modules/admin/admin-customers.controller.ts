@@ -1,22 +1,34 @@
 import {
   BadRequestException,
+  Body,
+  ConflictException,
   Controller,
   Get,
   NotFoundException,
+  Patch,
   Param,
   ParseIntPipe,
+  Post,
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { AuthGuard } from '@nestjs/passport';
+import * as crypto from 'crypto';
 import { DataSource, type FindOptionsWhere, type SelectQueryBuilder } from 'typeorm';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import {
   buildPaginationMeta,
   normalizePagination,
 } from '../../common/pagination';
+import {
+  hashPassword,
+  isValidLoginUsername,
+  normalizeLoginUsername,
+} from '../auth/password-hash';
 import { Order, OrderStatus } from '../orders/entities/order.entity';
 import { User, UserRole } from '../users/entities/user.entity';
+import { CreateAdminCustomerDto } from './dto/create-admin-customer.dto';
 import {
   CustomerAccountStateFilter,
   CustomerListSortBy,
@@ -24,6 +36,7 @@ import {
   ListAdminCustomersDto,
 } from './dto/list-admin-customers.dto';
 import { ListCustomerOrdersDto } from './dto/list-customer-orders.dto';
+import { SetCustomerBanStatusDto } from './dto/set-customer-ban-status.dto';
 
 const CUSTOMER_TREND_MONTHS = 6;
 
@@ -76,7 +89,81 @@ type RawCustomerSummaryRow = {
 @Controller('admin/customers')
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 export class AdminCustomersController {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    private readonly dataSource: DataSource,
+    private readonly configService: ConfigService,
+  ) {}
+
+  @Post()
+  async createCustomer(@Body() dto: CreateAdminCustomerDto) {
+    const userRepo = this.dataSource.getRepository(User);
+    const pepper = this.configService.get<string>('PASSWORD_PEPPER') ?? '';
+
+    const firstName = dto.firstName.trim();
+    const requestedPassword = dto.password?.trim();
+    const plainPassword =
+      requestedPassword && requestedPassword.length > 0
+        ? requestedPassword
+        : this.generateRandomPassword();
+    const loginUsername = dto.loginUsername?.trim()
+      ? await this.validateOrGenerateUsername(dto.loginUsername.trim())
+      : await this.generateUniqueLoginUsername(firstName || 'customer');
+
+    const customer = userRepo.create({
+      firstName,
+      username: '',
+      telegramId: null,
+      avatarUrl: '',
+      role: UserRole.CUSTOMER,
+      isBanned: false,
+      loginUsername,
+      passwordHash: await hashPassword(plainPassword, pepper),
+      passwordLoginFailedAttempts: 0,
+      passwordLoginLockedUntil: null,
+    });
+
+    try {
+      await userRepo.save(customer);
+    } catch (error) {
+      const err = error as { code?: string; errno?: number };
+      if (err.code === 'ER_DUP_ENTRY' || err.errno === 1062) {
+        throw new ConflictException('Username already in use');
+      }
+      throw error;
+    }
+
+    const safeCustomer = await userRepo.findOne({
+      where: { id: customer.id },
+    });
+    if (!safeCustomer) {
+      throw new NotFoundException('Created customer could not be loaded');
+    }
+
+    return {
+      customer: safeCustomer,
+      credentials: {
+        username: loginUsername,
+        password: plainPassword,
+      },
+    };
+  }
+
+  @Patch(':id/ban')
+  async setCustomerBanStatus(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: SetCustomerBanStatusDto,
+  ) {
+    const customer = await this.getCustomerOrThrow(id);
+    customer.isBanned = dto.banned;
+
+    if (!dto.banned) {
+      customer.passwordLoginFailedAttempts = 0;
+      customer.passwordLoginLockedUntil = null;
+    }
+
+    await this.dataSource.getRepository(User).save(customer);
+    return { success: true, banned: dto.banned };
+  }
 
   @Get()
   async listCustomers(
@@ -89,7 +176,10 @@ export class AdminCustomersController {
 
     const customerQuery = this.buildCustomerListQuery({
       search: query.search,
-      accountState: query.accountState ?? CustomerAccountStateFilter.ALL,
+      accountState:
+        query.status ??
+        query.accountState ??
+        CustomerAccountStateFilter.ALL,
       orderActivity: query.orderActivity ?? CustomerOrderActivityFilter.ALL,
       sortBy: query.sortBy ?? CustomerListSortBy.NEWEST,
     });
@@ -373,7 +463,10 @@ export class AdminCustomersController {
 
     if (accountState === CustomerAccountStateFilter.ACTIVE) {
       query.andWhere('user.isBanned = :isBanned', { isBanned: false });
-    } else if (accountState === CustomerAccountStateFilter.ARCHIVED) {
+    } else if (
+      accountState === CustomerAccountStateFilter.BANNED ||
+      accountState === CustomerAccountStateFilter.ARCHIVED
+    ) {
       query.andWhere('user.isBanned = :isBanned', { isBanned: true });
     }
 
@@ -488,6 +581,55 @@ export class AdminCustomersController {
     }
 
     return customer;
+  }
+
+  private async validateOrGenerateUsername(raw: string): Promise<string> {
+    const normalized = normalizeLoginUsername(raw);
+    if (!isValidLoginUsername(normalized)) {
+      throw new BadRequestException('Invalid username');
+    }
+
+    const existing = await this.dataSource.getRepository(User).findOne({
+      where: { loginUsername: normalized },
+    });
+    if (existing) {
+      throw new ConflictException('Username already in use');
+    }
+
+    return normalized;
+  }
+
+  private async generateUniqueLoginUsername(desired: string): Promise<string> {
+    const normalized = normalizeLoginUsername(desired);
+    const safeBase = isValidLoginUsername(normalized)
+      ? normalized
+      : normalizeLoginUsername('customer');
+
+    for (let attempt = 0; attempt < 1000; attempt += 1) {
+      const suffix = attempt === 0 ? '' : String(attempt);
+      const candidate = `${safeBase}${suffix}`.slice(0, 32);
+
+      if (!isValidLoginUsername(candidate)) {
+        continue;
+      }
+
+      const existing = await this.dataSource.getRepository(User).findOne({
+        where: { loginUsername: candidate },
+      });
+      if (!existing) {
+        return candidate;
+      }
+    }
+
+    throw new ConflictException('Unable to generate unique username');
+  }
+
+  private generateRandomPassword(length = 12): string {
+    const bytes = crypto.randomBytes(Math.max(length, 8));
+    return bytes
+      .toString('base64url')
+      .replace(/[^A-Za-z0-9]/g, '')
+      .slice(0, length);
   }
 
   private toNumber(value: unknown): number {

@@ -38,6 +38,61 @@ type TelegramCredentialsDelivery = {
   error?: string;
 };
 
+const MERCHANT_TREND_MONTHS = 6;
+
+const STATUS_COUNT_EXPRESSIONS: Record<OrderStatus, string> = {
+  [OrderStatus.PENDING]:
+    "COALESCE(SUM(CASE WHEN order.status = 'PENDING' THEN 1 ELSE 0 END), 0)",
+  [OrderStatus.APPROVED]:
+    "COALESCE(SUM(CASE WHEN order.status = 'APPROVED' THEN 1 ELSE 0 END), 0)",
+  [OrderStatus.SHIPPED]:
+    "COALESCE(SUM(CASE WHEN order.status = 'SHIPPED' THEN 1 ELSE 0 END), 0)",
+  [OrderStatus.REJECTED]:
+    "COALESCE(SUM(CASE WHEN order.status = 'REJECTED' THEN 1 ELSE 0 END), 0)",
+  [OrderStatus.CANCELLED]:
+    "COALESCE(SUM(CASE WHEN order.status = 'CANCELLED' THEN 1 ELSE 0 END), 0)",
+};
+
+type MerchantUserWithProfile = User & { merchantProfile?: MerchantProfile | null };
+
+type RawMerchantSummaryRow = {
+  totalOrders: string;
+  pendingOrders: string;
+  approvedOrders: string;
+  shippedOrders: string;
+  rejectedOrders: string;
+  cancelledOrders: string;
+  totalRevenue: string;
+  averageOrderValue: string | null;
+  firstOrderAt: string | null;
+  lastOrderAt: string | null;
+  customerCount: string;
+};
+
+type RawMerchantTrendRow = {
+  month: string;
+  orderCount: string;
+  totalRevenue: string;
+};
+
+type RawMerchantTopCustomerRow = {
+  customerId: string;
+  firstName: string | null;
+  username: string | null;
+  loginUsername: string | null;
+  totalOrders: string;
+  totalSpent: string;
+  lastOrderAt: string | null;
+};
+
+type RawMerchantProductSummaryRow = {
+  totalProducts: string;
+  activeProducts: string;
+  inactiveProducts: string;
+  outOfStockProducts: string;
+  lastProductCreatedAt: string | null;
+};
+
 @Injectable()
 export class MerchantsService {
   constructor(
@@ -144,6 +199,221 @@ export class MerchantsService {
     }
 
     const [data, total] = await qb.getManyAndCount();
+    return { data, total };
+  }
+
+  async getMerchantDetail(merchantId: number) {
+    const merchant = await this.getMerchantWithProfileOrThrow(merchantId);
+
+    const summary = await this.orderRepo
+      .createQueryBuilder('order')
+      .select('COUNT(order.id)', 'totalOrders')
+      .addSelect(STATUS_COUNT_EXPRESSIONS[OrderStatus.PENDING], 'pendingOrders')
+      .addSelect(STATUS_COUNT_EXPRESSIONS[OrderStatus.APPROVED], 'approvedOrders')
+      .addSelect(STATUS_COUNT_EXPRESSIONS[OrderStatus.SHIPPED], 'shippedOrders')
+      .addSelect(STATUS_COUNT_EXPRESSIONS[OrderStatus.REJECTED], 'rejectedOrders')
+      .addSelect(
+        STATUS_COUNT_EXPRESSIONS[OrderStatus.CANCELLED],
+        'cancelledOrders',
+      )
+      .addSelect(
+        "COALESCE(SUM(CASE WHEN order.status NOT IN ('CANCELLED','REJECTED') THEN order.totalAmount ELSE 0 END), 0)",
+        'totalRevenue',
+      )
+      .addSelect(
+        "COALESCE(AVG(CASE WHEN order.status NOT IN ('CANCELLED','REJECTED') THEN order.totalAmount ELSE NULL END), 0)",
+        'averageOrderValue',
+      )
+      .addSelect('MIN(order.createdAt)', 'firstOrderAt')
+      .addSelect('MAX(order.createdAt)', 'lastOrderAt')
+      .addSelect('COUNT(DISTINCT order.userId)', 'customerCount')
+      .where('order.merchantId = :merchantId', { merchantId })
+      .getRawOne<RawMerchantSummaryRow>();
+
+    const startMonth = new Date();
+    startMonth.setUTCHours(0, 0, 0, 0);
+    startMonth.setUTCDate(1);
+    startMonth.setUTCMonth(
+      startMonth.getUTCMonth() - (MERCHANT_TREND_MONTHS - 1),
+    );
+
+    const [trendRows, topShippingRows, topCustomerRows, productSummary] =
+      await Promise.all([
+        this.orderRepo
+          .createQueryBuilder('order')
+          .select("DATE_FORMAT(order.createdAt, '%Y-%m')", 'month')
+          .addSelect('COUNT(order.id)', 'orderCount')
+          .addSelect(
+            "COALESCE(SUM(CASE WHEN order.status NOT IN ('CANCELLED','REJECTED') THEN order.totalAmount ELSE 0 END), 0)",
+            'totalRevenue',
+          )
+          .where('order.merchantId = :merchantId', { merchantId })
+          .andWhere('order.createdAt >= :startMonth', { startMonth })
+          .groupBy("DATE_FORMAT(order.createdAt, '%Y-%m')")
+          .orderBy('month', 'ASC')
+          .getRawMany<RawMerchantTrendRow>(),
+        this.orderRepo
+          .createQueryBuilder('order')
+          .select('order.shippingAddress', 'shippingAddress')
+          .addSelect('COUNT(order.id)', 'count')
+          .where('order.merchantId = :merchantId', { merchantId })
+          .andWhere('order.shippingAddress IS NOT NULL')
+          .andWhere("TRIM(order.shippingAddress) != ''")
+          .groupBy('order.shippingAddress')
+          .orderBy('count', 'DESC')
+          .addOrderBy('MAX(order.createdAt)', 'DESC')
+          .limit(3)
+          .getRawMany<{ shippingAddress: string; count: string }>(),
+        this.orderRepo
+          .createQueryBuilder('order')
+          .leftJoin('order.user', 'customer')
+          .select('customer.id', 'customerId')
+          .addSelect('customer.firstName', 'firstName')
+          .addSelect('customer.username', 'username')
+          .addSelect('customer.loginUsername', 'loginUsername')
+          .addSelect('COUNT(order.id)', 'totalOrders')
+          .addSelect(
+            "COALESCE(SUM(CASE WHEN order.status NOT IN ('CANCELLED','REJECTED') THEN order.totalAmount ELSE 0 END), 0)",
+            'totalSpent',
+          )
+          .addSelect('MAX(order.createdAt)', 'lastOrderAt')
+          .where('order.merchantId = :merchantId', { merchantId })
+          .groupBy('customer.id')
+          .orderBy('totalSpent', 'DESC')
+          .addOrderBy('totalOrders', 'DESC')
+          .limit(5)
+          .getRawMany<RawMerchantTopCustomerRow>(),
+        this.productRepo
+          .createQueryBuilder('product')
+          .select('COUNT(product.id)', 'totalProducts')
+          .addSelect(
+            'COALESCE(SUM(CASE WHEN product.isActive = true THEN 1 ELSE 0 END), 0)',
+            'activeProducts',
+          )
+          .addSelect(
+            'COALESCE(SUM(CASE WHEN product.isActive = false THEN 1 ELSE 0 END), 0)',
+            'inactiveProducts',
+          )
+          .addSelect(
+            'COALESCE(SUM(CASE WHEN product.stock <= 0 THEN 1 ELSE 0 END), 0)',
+            'outOfStockProducts',
+          )
+          .addSelect('MAX(product.createdAt)', 'lastProductCreatedAt')
+          .where('product.merchantId = :merchantId', { merchantId })
+          .getRawOne<RawMerchantProductSummaryRow>(),
+      ]);
+
+    const statusCounts = {
+      [OrderStatus.PENDING]: this.toNumber(summary?.pendingOrders),
+      [OrderStatus.APPROVED]: this.toNumber(summary?.approvedOrders),
+      [OrderStatus.SHIPPED]: this.toNumber(summary?.shippedOrders),
+      [OrderStatus.REJECTED]: this.toNumber(summary?.rejectedOrders),
+      [OrderStatus.CANCELLED]: this.toNumber(summary?.cancelledOrders),
+    };
+
+    const totalOrders = this.toNumber(summary?.totalOrders);
+    const totalRevenue = this.toNumber(summary?.totalRevenue);
+    const averageOrderValue = this.toNumber(summary?.averageOrderValue);
+
+    const monthlyTrendMap = new Map(
+      trendRows.map((row) => [
+        row.month,
+        {
+          orderCount: this.toNumber(row.orderCount),
+          totalRevenue: this.toNumber(row.totalRevenue),
+        },
+      ]),
+    );
+
+    const monthlyTrend = Array.from({ length: MERCHANT_TREND_MONTHS }).map(
+      (_, index) => {
+        const current = new Date(startMonth);
+        current.setUTCMonth(startMonth.getUTCMonth() + index);
+        const month = this.toYearMonth(current);
+        const values = monthlyTrendMap.get(month) ?? {
+          orderCount: 0,
+          totalRevenue: 0,
+        };
+
+        return {
+          month,
+          label: current.toLocaleDateString('en-US', {
+            month: 'short',
+            timeZone: 'UTC',
+          }),
+          orderCount: values.orderCount,
+          totalRevenue: values.totalRevenue,
+        };
+      },
+    );
+
+    return {
+      merchant: {
+        id: merchant.id,
+        firstName: merchant.firstName ?? 'Unknown',
+        username: merchant.username,
+        loginUsername: merchant.loginUsername,
+        telegramId: merchant.telegramId,
+        avatarUrl: merchant.avatarUrl,
+        role: merchant.role,
+        isBanned: merchant.isBanned,
+        createdAt: merchant.createdAt,
+        updatedAt: merchant.updatedAt,
+        merchantProfile: merchant.merchantProfile ?? null,
+      },
+      report: {
+        totalOrders,
+        totalRevenue,
+        averageOrderValue,
+        firstOrderAt: summary?.firstOrderAt ?? null,
+        lastOrderAt: summary?.lastOrderAt ?? null,
+        customerCount: this.toNumber(summary?.customerCount),
+        statusCounts,
+        monthlyTrend,
+        topShippingAddresses: topShippingRows.map((row) => ({
+          shippingAddress: row.shippingAddress,
+          count: this.toNumber(row.count),
+        })),
+        topCustomers: topCustomerRows.map((row) => ({
+          customerId: this.toNumber(row.customerId),
+          firstName: row.firstName ?? 'Unknown',
+          username: row.username,
+          loginUsername: row.loginUsername,
+          totalOrders: this.toNumber(row.totalOrders),
+          totalSpent: this.toNumber(row.totalSpent),
+          lastOrderAt: row.lastOrderAt,
+        })),
+        productSummary: {
+          totalProducts: this.toNumber(productSummary?.totalProducts),
+          activeProducts: this.toNumber(productSummary?.activeProducts),
+          inactiveProducts: this.toNumber(productSummary?.inactiveProducts),
+          outOfStockProducts: this.toNumber(productSummary?.outOfStockProducts),
+          lastProductCreatedAt: productSummary?.lastProductCreatedAt ?? null,
+        },
+      },
+    };
+  }
+
+  async listMerchantOrders(
+    merchantId: number,
+    page: number,
+    limit: number,
+    status?: OrderStatus,
+  ) {
+    await this.getMerchantWithProfileOrThrow(merchantId);
+
+    const where = status
+      ? { merchant: { id: merchantId }, status }
+      : { merchant: { id: merchantId } };
+
+    const [data, total] = await this.orderRepo.findAndCount({
+      where,
+      relations: ['user', 'items', 'merchant'],
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
     return { data, total };
   }
 
@@ -655,6 +925,40 @@ export class MerchantsService {
     const month = String(date.getUTCMonth() + 1).padStart(2, '0');
     const day = String(date.getUTCDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  }
+
+  private toYearMonth(date: Date): string {
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    return `${year}-${month}`;
+  }
+
+  private toNumber(value: unknown): number {
+    const parsed =
+      typeof value === 'number' ? value : Number.parseFloat(String(value ?? 0));
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  private async getMerchantWithProfileOrThrow(
+    merchantId: number,
+  ): Promise<MerchantUserWithProfile> {
+    const merchant = await this.userRepo
+      .createQueryBuilder('user')
+      .leftJoinAndMapOne(
+        'user.merchantProfile',
+        MerchantProfile,
+        'profile',
+        'profile.userId = user.id',
+      )
+      .where('user.id = :merchantId', { merchantId })
+      .andWhere('user.role = :role', { role: UserRole.MERCHANT })
+      .getOne();
+
+    if (!merchant) {
+      throw new NotFoundException('Merchant not found');
+    }
+
+    return merchant as MerchantUserWithProfile;
   }
 
   private async createAccountFromApplication(application: MerchantApplication) {

@@ -41,6 +41,7 @@ import { DataTablePagination } from "../../components/table/DataTablePagination"
 import MerchantCreateModal from "../../components/merchants/MerchantCreateModal";
 import MerchantApplicationDetailModal from "../../components/merchants/MerchantApplicationDetailModal";
 import MerchantEditModal from "../../components/merchants/MerchantEditModal";
+import MerchantDetailModal from "../../components/merchants/MerchantDetailModal";
 
 type TabKey = "merchants" | "applications";
 
@@ -67,12 +68,14 @@ export default function MerchantsPage() {
   const [applicationStatus, setApplicationStatus] =
     useState<MerchantApplicationStatus | "ALL">("PENDING");
   const [selectedApplicationId, setSelectedApplicationId] = useState<number | null>(null);
+  const [selectedMerchantId, setSelectedMerchantId] = useState<number | null>(null);
   const [selectedMerchant, setSelectedMerchant] = useState<MerchantUser | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<MerchantUser | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const createModal = useDisclosure();
   const editModal = useDisclosure();
+  const detailModal = useDisclosure();
   const applicationModal = useDisclosure();
 
   useEffect(() => {
@@ -259,6 +262,17 @@ export default function MerchantsPage() {
             <Button
               size="sm"
               variant="flat"
+              startContent={<Eye className="h-3.5 w-3.5" />}
+              onPress={() => {
+                setSelectedMerchantId(row.original.id);
+                detailModal.onOpen();
+              }}
+            >
+              Details
+            </Button>
+            <Button
+              size="sm"
+              variant="flat"
               startContent={<PencilSimple className="h-3.5 w-3.5" />}
               onPress={() => {
                 setSelectedMerchant(row.original);
@@ -283,7 +297,7 @@ export default function MerchantsPage() {
         ),
       },
     ],
-    [editModal, merchantsOffset],
+    [detailModal, editModal, merchantsOffset],
   );
 
   const applicationColumns = useMemo<ColumnDef<MerchantApplication>[]>(
@@ -372,6 +386,7 @@ export default function MerchantsPage() {
   const refreshAfterMutations = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["merchants"] }),
+      queryClient.invalidateQueries({ queryKey: ["admin", "merchants"] }),
       queryClient.invalidateQueries({ queryKey: ["merchant-applications"] }),
     ]);
   };
@@ -503,6 +518,19 @@ export default function MerchantsPage() {
         onCreated={() => {
           void refreshAfterMutations();
         }}
+      />
+
+      <MerchantDetailModal
+        merchantId={selectedMerchantId}
+        isOpen={detailModal.isOpen}
+        onClose={() => {
+          detailModal.onClose();
+          setSelectedMerchantId(null);
+        }}
+        onToggleArchive={(merchantId, archived) => {
+          archiveMerchantMutation.mutate({ merchantId, archived });
+        }}
+        isTogglingArchive={archiveMerchantMutation.isPending}
       />
 
       <MerchantApplicationDetailModal

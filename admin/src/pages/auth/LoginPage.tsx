@@ -9,8 +9,9 @@ import {
   addToast,
 } from "@heroui/react";
 import { useNavigate } from "react-router-dom";
-import { Package, SignIn } from "@phosphor-icons/react";
+import { SignIn } from "@phosphor-icons/react";
 import { api, clearAuthToken, setAuthToken } from "../../lib/api";
+import appLogo from "../../assets/logo.png";
 
 interface TelegramUser {
   id: number;
@@ -159,9 +160,7 @@ export default function LoginPage() {
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-linear-to-br from-blue-800 via-indigo-900 to-slate-950 px-4 py-10">
       <Card className="w-full max-w-md p-2">
         <CardHeader className="flex flex-col gap-2 pb-2 text-center">
-          <div className="size-12 flex items-center justify-center rounded-lg bg-linear-to-r from-blue-500 via-indigo-500 to-slate-500 shrink-0">
-            <Package className="size-8 text-white" />
-          </div>
+          <img src={appLogo} alt="Gebeya Pro logo" className="size-12 rounded-lg object-contain" />
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
             Staff Login
           </h1>

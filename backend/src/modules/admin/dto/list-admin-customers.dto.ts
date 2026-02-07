@@ -12,6 +12,7 @@ import {
 export enum CustomerAccountStateFilter {
   ALL = 'ALL',
   ACTIVE = 'ACTIVE',
+  BANNED = 'BANNED',
   ARCHIVED = 'ARCHIVED',
 }
 
@@ -42,6 +43,10 @@ export class ListAdminCustomersDto {
   @IsOptional()
   @IsEnum(CustomerAccountStateFilter)
   accountState?: CustomerAccountStateFilter;
+
+  @IsOptional()
+  @IsEnum(CustomerAccountStateFilter)
+  status?: CustomerAccountStateFilter;
 
   @IsOptional()
   @IsEnum(CustomerOrderActivityFilter)

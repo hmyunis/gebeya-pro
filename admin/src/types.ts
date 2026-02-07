@@ -105,6 +105,16 @@ export interface CustomerDetailResponse {
   report: CustomerDetailReport;
 }
 
+export interface CreatedCustomerCredentials {
+  username: string;
+  password: string;
+}
+
+export interface CreateCustomerResponse {
+  customer: User;
+  credentials: CreatedCustomerCredentials;
+}
+
 export interface Order {
   id: number;
   totalAmount: number;
@@ -147,11 +157,65 @@ export interface MerchantProfile {
   itemTypes: string[];
   address: string;
   profilePictureUrl?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface MerchantUser extends User {
   role: "merchant";
   merchantProfile?: MerchantProfile;
+}
+
+export interface MerchantDetailUser extends MerchantUser {
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MerchantDetailReportPoint {
+  month: string;
+  label: string;
+  orderCount: number;
+  totalRevenue: number;
+}
+
+export interface MerchantTopCustomer {
+  customerId: number;
+  firstName: string;
+  username?: string | null;
+  loginUsername?: string | null;
+  totalOrders: number;
+  totalSpent: number;
+  lastOrderAt: string | null;
+}
+
+export interface MerchantProductSummary {
+  totalProducts: number;
+  activeProducts: number;
+  inactiveProducts: number;
+  outOfStockProducts: number;
+  lastProductCreatedAt: string | null;
+}
+
+export interface MerchantDetailReport {
+  totalOrders: number;
+  totalRevenue: number;
+  averageOrderValue: number;
+  firstOrderAt: string | null;
+  lastOrderAt: string | null;
+  customerCount: number;
+  statusCounts: OrderStatusCounts;
+  monthlyTrend: MerchantDetailReportPoint[];
+  topShippingAddresses: Array<{
+    shippingAddress: string;
+    count: number;
+  }>;
+  topCustomers: MerchantTopCustomer[];
+  productSummary: MerchantProductSummary;
+}
+
+export interface MerchantDetailResponse {
+  merchant: MerchantDetailUser;
+  report: MerchantDetailReport;
 }
 
 export type MerchantApplicationStatus = "PENDING" | "APPROVED" | "REJECTED";

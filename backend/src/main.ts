@@ -37,7 +37,7 @@ async function bootstrap() {
   const allowedOrigins = [...new Set([...defaultOrigins, ...envOrigins])];
 
   app.enableCors({
-    origin: true,
+    origin: allowedOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
@@ -52,6 +52,11 @@ async function bootstrap() {
   await app.register(multipart, {
     limits: {
       fileSize: 25 * 1024 * 1024, // 25MB limit
+      files: 6,
+      parts: 40,
+      fields: 30,
+      fieldNameSize: 100,
+      fieldSize: 1 * 1024 * 1024,
     },
   });
 

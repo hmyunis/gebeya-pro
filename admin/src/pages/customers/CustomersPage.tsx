@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type ColumnDef } from "@tanstack/react-table";
 import {
   Avatar,
@@ -8,28 +8,46 @@ import {
   CardBody,
   Chip,
   Input,
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
   Select,
   SelectItem,
   Tooltip,
+  addToast,
   useDisclosure,
 } from "@heroui/react";
 import {
   ArrowsDownUp,
   Eye,
   FunnelSimple,
+  LockSimpleOpen,
   MagnifyingGlass,
+  PlusCircle,
+  Prohibit,
   UserCircle,
   UsersThree,
+  WarningCircle,
   XCircle,
 } from "@phosphor-icons/react";
 import { api } from "../../lib/api";
-import type { CustomerListItem, OrderStatus, PaginatedResponse } from "../../types";
+import type {
+  CreateCustomerResponse,
+  CreatedCustomerCredentials,
+  CustomerListItem,
+  OrderStatus,
+  PaginatedResponse,
+} from "../../types";
 import { getImageUrl } from "../../types";
 import { DataTable } from "../../components/table/DataTable";
 import { DataTablePagination } from "../../components/table/DataTablePagination";
 import CustomerDetailModal from "../../components/customers/CustomerDetailModal";
+import CustomerCreateModal from "../../components/customers/CustomerCreateModal";
+import CustomerCredentialsModal from "../../components/customers/CustomerCredentialsModal";
 
-type AccountStateFilter = "ALL" | "ACTIVE" | "ARCHIVED";
+type AccountStateFilter = "ALL" | "ACTIVE" | "BANNED";
 type OrderActivityFilter =
   | "ALL"
   | "NO_ORDERS"
@@ -39,6 +57,11 @@ type OrderActivityFilter =
   | "HAS_REJECTED"
   | "HAS_CANCELLED";
 type CustomerSortFilter = "NEWEST" | "OLDEST" | "MOST_ORDERS" | "HIGHEST_SPEND" | "LAST_ORDER";
+type BanConfirmationTarget = {
+  customerId: number;
+  banned: boolean;
+  customerName: string;
+};
 
 const statusOrder: OrderStatus[] = ["PENDING", "APPROVED", "SHIPPED", "REJECTED", "CANCELLED"];
 
@@ -74,8 +97,17 @@ const formatDate = (value?: string | null) => {
 };
 
 export default function CustomersPage() {
+  const queryClient = useQueryClient();
   const detailModal = useDisclosure();
+  const createModal = useDisclosure();
+  const credentialsModal = useDisclosure();
+  const banConfirmModal = useDisclosure();
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
+  const [newCustomerName, setNewCustomerName] = useState<string | null>(null);
+  const [newCustomerCredentials, setNewCustomerCredentials] =
+    useState<CreatedCustomerCredentials | null>(null);
+  const [banConfirmationTarget, setBanConfirmationTarget] =
+    useState<BanConfirmationTarget | null>(null);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [accountState, setAccountState] = useState<AccountStateFilter>("ALL");
@@ -111,7 +143,7 @@ export default function CustomersPage() {
         await api.get("/admin/customers", {
           params: {
             search: search || undefined,
-            accountState,
+            status: accountState,
             orderActivity,
             sortBy,
             page: customersPage,
@@ -120,6 +152,44 @@ export default function CustomersPage() {
         })
       ).data,
   });
+
+  const banCustomerMutation = useMutation({
+    mutationFn: async ({ customerId, banned }: { customerId: number; banned: boolean }) =>
+      (
+        await api.patch<{ success: boolean; banned: boolean }>(`/admin/customers/${customerId}/ban`, {
+          banned,
+        })
+      ).data,
+    onSuccess: async (_payload, variables) => {
+      addToast({
+        title: variables.banned ? "Customer banned" : "Customer unbanned",
+        description: variables.banned
+          ? "This customer can no longer log in or use the system."
+          : "Customer access has been restored.",
+        color: "success",
+      });
+      await queryClient.invalidateQueries({ queryKey: ["admin", "customers"] });
+    },
+    onError: (error: unknown) => {
+      const message = (
+        error as { response?: { data?: { message?: string | string[] } } }
+      )?.response?.data?.message;
+      addToast({
+        title: "Status update failed",
+        description: Array.isArray(message) ? message.join(", ") : message || "Could not update status.",
+        color: "danger",
+      });
+    },
+  });
+
+  const openBanConfirmation = (customerId: number, banned: boolean, customerName: string) => {
+    setBanConfirmationTarget({
+      customerId,
+      banned,
+      customerName: customerName.trim() || "this customer",
+    });
+    banConfirmModal.onOpen();
+  };
 
   const customers = customersQuery.data?.data ?? [];
   const customersMeta = customersQuery.data?.meta;
@@ -174,7 +244,7 @@ export default function CustomersPage() {
               color={row.original.isBanned ? "warning" : "success"}
               className="w-fit"
             >
-              {row.original.isBanned ? "Archived" : "Active"}
+              {row.original.isBanned ? "Banned" : "Active"}
             </Chip>
             <p className="text-xs text-default-400">{row.original.telegramId || "No Telegram"}</p>
           </div>
@@ -221,21 +291,48 @@ export default function CustomersPage() {
       {
         header: "Actions",
         cell: ({ row }) => (
-          <Button
-            size="sm"
-            variant="flat"
-            startContent={<Eye className="h-3.5 w-3.5" />}
-            onPress={() => {
-              setSelectedCustomerId(row.original.id);
-              detailModal.onOpen();
-            }}
-          >
-            Details
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="flat"
+              startContent={<Eye className="h-3.5 w-3.5" />}
+              onPress={() => {
+                setSelectedCustomerId(row.original.id);
+                detailModal.onOpen();
+              }}
+            >
+              Details
+            </Button>
+            <Button
+              size="sm"
+              variant="flat"
+              color={row.original.isBanned ? "success" : "warning"}
+              startContent={
+                row.original.isBanned ? (
+                  <LockSimpleOpen className="h-3.5 w-3.5" />
+                ) : (
+                  <Prohibit className="h-3.5 w-3.5" />
+                )
+              }
+              isLoading={
+                banCustomerMutation.isPending &&
+                banCustomerMutation.variables?.customerId === row.original.id
+              }
+              onPress={() =>
+                openBanConfirmation(
+                  row.original.id,
+                  !row.original.isBanned,
+                  row.original.firstName || "this customer",
+                )
+              }
+            >
+              {row.original.isBanned ? "Unban" : "Ban"}
+            </Button>
+          </div>
         ),
       },
     ],
-    [customersOffset, detailModal],
+    [banCustomerMutation, customersOffset, detailModal],
   );
 
   return (
@@ -251,25 +348,34 @@ export default function CustomersPage() {
               Manage customer profiles, status-specific order counts, and deep reports.
             </p>
           </div>
-          <Button
-            variant="light"
-            startContent={<XCircle className="h-4 w-4" />}
-            onPress={() => {
-              setSearchInput("");
-              setSearch("");
-              setAccountState("ALL");
-              setOrderActivity("ALL");
-              setSortBy("NEWEST");
-            }}
-            isDisabled={
-              !searchInput &&
-              accountState === "ALL" &&
-              orderActivity === "ALL" &&
-              sortBy === "NEWEST"
-            }
-          >
-            Reset Filters
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              color="primary"
+              startContent={<PlusCircle className="h-4 w-4" />}
+              onPress={createModal.onOpen}
+            >
+              Create Customer
+            </Button>
+            <Button
+              variant="light"
+              startContent={<XCircle className="h-4 w-4" />}
+              onPress={() => {
+                setSearchInput("");
+                setSearch("");
+                setAccountState("ALL");
+                setOrderActivity("ALL");
+                setSortBy("NEWEST");
+              }}
+              isDisabled={
+                !searchInput &&
+                accountState === "ALL" &&
+                orderActivity === "ALL" &&
+                sortBy === "NEWEST"
+              }
+            >
+              Reset Filters
+            </Button>
+          </div>
         </div>
 
         <Card className="border border-default-200 shadow-none">
@@ -287,7 +393,7 @@ export default function CustomersPage() {
 
               <Select
                 className="lg:col-span-2"
-                label="Account"
+                label="Status"
                 labelPlacement="outside"
                 selectedKeys={new Set([accountState])}
                 onSelectionChange={(keys) => {
@@ -299,7 +405,7 @@ export default function CustomersPage() {
               >
                 <SelectItem key="ALL">All</SelectItem>
                 <SelectItem key="ACTIVE">Active</SelectItem>
-                <SelectItem key="ARCHIVED">Archived</SelectItem>
+                <SelectItem key="BANNED">Banned</SelectItem>
               </Select>
 
               <Select
@@ -380,11 +486,88 @@ export default function CustomersPage() {
       <CustomerDetailModal
         customerId={selectedCustomerId}
         isOpen={detailModal.isOpen}
+        onToggleBan={openBanConfirmation}
+        isTogglingBan={
+          banCustomerMutation.isPending &&
+          banCustomerMutation.variables?.customerId === selectedCustomerId
+        }
         onClose={() => {
           detailModal.onClose();
           setSelectedCustomerId(null);
         }}
       />
+
+      <CustomerCreateModal
+        isOpen={createModal.isOpen}
+        onClose={createModal.onClose}
+        onCreated={async (payload: CreateCustomerResponse) => {
+          setNewCustomerName(payload.customer.firstName || "Customer");
+          setNewCustomerCredentials(payload.credentials);
+          credentialsModal.onOpen();
+          await queryClient.invalidateQueries({ queryKey: ["admin", "customers"] });
+        }}
+      />
+
+      <CustomerCredentialsModal
+        isOpen={credentialsModal.isOpen}
+        onClose={() => {
+          credentialsModal.onClose();
+          setNewCustomerName(null);
+          setNewCustomerCredentials(null);
+        }}
+        customerName={newCustomerName}
+        credentials={newCustomerCredentials}
+      />
+
+      <Modal
+        isOpen={banConfirmModal.isOpen}
+        onClose={() => {
+          banConfirmModal.onClose();
+          setBanConfirmationTarget(null);
+        }}
+      >
+        <ModalContent>
+          <ModalHeader className="flex items-center gap-2">
+            <WarningCircle className="h-5 w-5 text-warning" />
+            <span>
+              {banConfirmationTarget?.banned ? "Confirm Ban Customer" : "Confirm Unban Customer"}
+            </span>
+          </ModalHeader>
+          <ModalBody>
+            <p className="text-sm text-default-600">
+              {banConfirmationTarget?.banned
+                ? `Are you sure you want to ban ${banConfirmationTarget.customerName}? This will prevent login and access to the system.`
+                : `Are you sure you want to unban ${banConfirmationTarget?.customerName}? This will restore login and system access.`}
+            </p>
+          </ModalBody>
+          <ModalFooter>
+            <Button
+              variant="light"
+              onPress={() => {
+                banConfirmModal.onClose();
+                setBanConfirmationTarget(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              color={banConfirmationTarget?.banned ? "warning" : "success"}
+              isLoading={banCustomerMutation.isPending}
+              onPress={() => {
+                if (!banConfirmationTarget) return;
+                banCustomerMutation.mutate({
+                  customerId: banConfirmationTarget.customerId,
+                  banned: banConfirmationTarget.banned,
+                });
+                banConfirmModal.onClose();
+                setBanConfirmationTarget(null);
+              }}
+            >
+              {banConfirmationTarget?.banned ? "Yes, Ban Customer" : "Yes, Unban Customer"}
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </div>
   );
 }

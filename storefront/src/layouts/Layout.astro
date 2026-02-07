@@ -4,9 +4,24 @@ import Navbar from "@/features/navigation/components/Navbar";
 import Footer from "@/features/footer/components/Footer";
 import Toasts from "@/app/Toasts";
 import AuthBootstrap from "@/features/auth/components/AuthBootstrap";
+import {
+  PUBLIC_AUTHOR_NAME,
+  PUBLIC_CONTACT_EMAIL,
+  PUBLIC_DEFAULT_OG_IMAGE,
+  PUBLIC_DEFAULT_SEO_DESCRIPTION,
+  PUBLIC_SITE_NAME,
+  PUBLIC_SITE_URL,
+  PUBLIC_SOCIAL_GITHUB_URL,
+  PUBLIC_SOCIAL_TELEGRAM_URL,
+  PUBLIC_SOCIAL_TIKTOK_URL,
+} from "@/config/env";
 
 interface Props {
   title: string;
+  description?: string;
+  image?: string;
+  keywords?: string;
+  noIndex?: boolean;
   showNavbar?: boolean;
   showNavbarCart?: boolean;
   mainClass?: string;
@@ -14,10 +29,45 @@ interface Props {
 
 const {
   title,
+  description = PUBLIC_DEFAULT_SEO_DESCRIPTION,
+  image = PUBLIC_DEFAULT_OG_IMAGE,
+  keywords = "Ethiopia marketplace, online shopping, Gebeya Pro, products, orders, merchant marketplace",
+  noIndex = false,
   showNavbar = true,
   showNavbarCart = true,
   mainClass = "max-w-7xl mx-auto px-4 pt-28 pb-16",
 } = Astro.props;
+
+const pageTitle = `${title} | ${PUBLIC_SITE_NAME}`;
+const canonicalUrl = new URL(Astro.url.pathname, `${PUBLIC_SITE_URL}/`).toString();
+const previewImageUrl = image.startsWith("http")
+  ? image
+  : new URL(image, `${PUBLIC_SITE_URL}/`).toString();
+const robotsContent = noIndex
+  ? "noindex, nofollow, noarchive"
+  : "index, follow, max-image-preview:large";
+
+const organizationJsonLd = JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: PUBLIC_SITE_NAME,
+  url: PUBLIC_SITE_URL,
+  email: PUBLIC_CONTACT_EMAIL,
+  logo: new URL("/favicons/web-app-manifest-512x512.png", `${PUBLIC_SITE_URL}/`).toString(),
+  sameAs: [
+    PUBLIC_SOCIAL_GITHUB_URL,
+    PUBLIC_SOCIAL_TELEGRAM_URL,
+    PUBLIC_SOCIAL_TIKTOK_URL,
+  ],
+});
+
+const websiteJsonLd = JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: PUBLIC_SITE_NAME,
+  url: PUBLIC_SITE_URL,
+  inLanguage: "en",
+});
 ---
 
 <!doctype html>
@@ -25,13 +75,53 @@ const {
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
+    <title>{pageTitle}</title>
+
+    <meta name="description" content={description} />
+    <meta name="keywords" content={keywords} />
+    <meta name="author" content={PUBLIC_AUTHOR_NAME} />
+    <meta name="robots" content={robotsContent} />
+    <meta name="application-name" content={PUBLIC_SITE_NAME} />
+    <meta name="theme-color" content="#0b1427" />
+    <meta name="format-detection" content="telephone=no, address=no, email=no" />
+
+    <link rel="canonical" href={canonicalUrl} />
+    <link rel="author" href={PUBLIC_SOCIAL_GITHUB_URL} />
+    <link rel="me" href={PUBLIC_SOCIAL_GITHUB_URL} />
+    <link rel="me" href={PUBLIC_SOCIAL_TELEGRAM_URL} />
+    <link rel="me" href={PUBLIC_SOCIAL_TIKTOK_URL} />
+
+    <link rel="icon" type="image/png" href="/favicons/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/favicons/favicon.svg" />
+    <link rel="shortcut icon" href="/favicons/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="Gebeya Pro" />
+    <link rel="manifest" href="/favicons/site.webmanifest" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:site_name" content={PUBLIC_SITE_NAME} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:image" content={previewImageUrl} />
+    <meta property="og:image:alt" content={`${PUBLIC_SITE_NAME} preview`} />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={pageTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={previewImageUrl} />
+    <meta name="twitter:image:alt" content={`${PUBLIC_SITE_NAME} preview`} />
+
+    <script type="application/ld+json" set:html={organizationJsonLd} />
+    <script type="application/ld+json" set:html={websiteJsonLd} />
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <title>Gebeya Pro | {title}</title>
   </head>
   <body>
     <div class="pointer-events-none fixed inset-0 -z-10">

@@ -22,6 +22,9 @@ import { loadUser } from "@/features/auth/store/authStore";
 import { setAuthToken } from "@/features/auth/utils/token";
 import { api, getApiErrorMessage } from "@/lib/api";
 import QueryProvider from "@/app/QueryProvider";
+import appLogo from "@/assets/logo.png";
+
+const appLogoSrc = typeof appLogo === "string" ? appLogo : appLogo.src;
 
 async function confirmSession(): Promise<boolean> {
   for (const delayMs of [0, 250, 750]) {
@@ -180,9 +183,11 @@ function AuthLoginContent({ apiBase, telegramBot }: AuthLoginProps) {
           </div>
 
           <div className="mt-8 text-center md:mt-0 md:text-left">
-            <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white/20 text-white shadow-inner backdrop-blur-lg">
-              <span className="font-display text-2xl font-bold">G</span>
-            </div>
+            <img
+              src={appLogoSrc}
+              alt="Gebeya Pro logo"
+              className="mb-4 inline-flex h-14 w-14 rounded-2xl object-contain shadow-inner"
+            />
             <p className="mb-1 text-[11px] uppercase tracking-[0.35em] opacity-80">
               Account
             </p>

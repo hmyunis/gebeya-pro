@@ -8,14 +8,18 @@ import {
 import { GitHubIcon, TelegramIcon, TikTokIcon } from './SocialIcons';
 import QueryProvider from "@/app/QueryProvider";
 import { Lock } from 'lucide-react';
+import appLogo from "@/assets/logo.png";
+
+const appLogoSrc = typeof appLogo === "string" ? appLogo : appLogo.src;
 
 function Logo() {
     return (
         <div className="flex items-center gap-3">
-            {/* Icon: White/Glass effect to pop against dark bg */}
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 shadow-inner ring-1 ring-white/20 backdrop-blur-sm">
-                <span className="font-display text-lg text-white">G</span>
-            </div>
+            <img
+                src={appLogoSrc}
+                alt="Gebeya Pro logo"
+                className="h-10 w-10 rounded-xl object-contain ring-1 ring-white/20"
+            />
             <div className="flex flex-col leading-none">
                 <span className="text-lg font-semibold tracking-tight text-white">Gebeya Pro</span>
                 <span className="text-[10px] uppercase tracking-[0.3em] text-slate-400">

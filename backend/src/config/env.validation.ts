@@ -33,6 +33,9 @@ export const envSchema = z.object({
   BROADCAST_BATCH_SIZE: z.coerce.number().int().positive().optional(),
   BROADCAST_CONCURRENCY: z.coerce.number().int().positive().optional(),
   BROADCAST_MAX_ATTEMPTS: z.coerce.number().int().positive().optional(),
+
+  // Public links
+  DASHBOARD_URL: z.string().url().optional(),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

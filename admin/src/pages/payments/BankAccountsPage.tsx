@@ -146,7 +146,7 @@ export default function BankAccountsPage() {
             <div className="divide-y divide-default-200">
               {accounts.map((account) => (
                 <div key={account.id} className="flex flex-wrap items-center gap-4 p-4">
-                  <div className="flex items-center gap-3 min-w-[220px]">
+                  <div className="flex items-center gap-3 min-w-55">
                     <div className="h-12 w-12 overflow-hidden rounded-xl border border-default-200 bg-default-50">
                       {account.logoUrl ? (
                         <img
@@ -164,7 +164,7 @@ export default function BankAccountsPage() {
                     </div>
                   </div>
 
-                  <div className="flex-1 min-w-[200px]">
+                  <div className="flex-1 min-w-50">
                     <p className="text-sm font-medium">{account.accountNumber}</p>
                     <p className="text-xs text-default-500">Account number</p>
                   </div>

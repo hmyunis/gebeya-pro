@@ -3,6 +3,7 @@ import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api, clearAuthToken } from "../lib/api";
 import { getImageUrl } from "../types";
+import appLogo from "../assets/logo.png";
 import {
   Navbar,
   NavbarContent,
@@ -111,9 +112,7 @@ export default function DashboardLayout() {
         )}
       >
         <div className={cn("mb-8 flex items-center gap-2 shrink-0", isCollapsed ? "justify-center" : "px-2")}>
-          <div className="h-8 w-8 flex items-center justify-center rounded-lg bg-linear-to-r from-blue-500 via-indigo-500 to-slate-500 shrink-0">
-            <Package className="h-6 w-6 text-white" />
-          </div>
+          <img src={appLogo} alt="Gebeya Pro logo" className="h-8 w-8 shrink-0 rounded-lg object-contain" />
           <span className={cn("text-xl font-bold whitespace-nowrap", isCollapsed && "hidden")}>Gebeya Pro</span>
         </div>
 
@@ -272,7 +271,7 @@ export default function DashboardLayout() {
       >
         <DrawerContent>
           <DrawerHeader className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-primary" />
+            <img src={appLogo} alt="Gebeya Pro logo" className="h-8 w-8 rounded-lg object-contain" />
             <span className="text-lg font-bold">Gebeya Pro</span>
           </DrawerHeader>
           <DrawerBody className="space-y-2">

@@ -1,11 +1,35 @@
 import { stripTrailingSlash } from "@/lib/url";
 
 const DEFAULT_API_BASE = "http://localhost:3000";
+const DEFAULT_SITE_URL = "https://gebeya.pro";
+const DEFAULT_SITE_NAME = "Gebeya Pro";
+const DEFAULT_AUTHOR = "Hamdi Mohammed";
+const DEFAULT_DESCRIPTION =
+  "Gebeya Pro is a modern marketplace for discovering products, placing orders quickly, and managing your account with ease.";
 
 export const PUBLIC_API_BASE: string =
   (import.meta.env.PUBLIC_API_BASE as string | undefined) ?? DEFAULT_API_BASE;
 
 export const API_BASE: string = stripTrailingSlash(PUBLIC_API_BASE);
+
+export const PUBLIC_SITE_URL: string =
+  stripTrailingSlash(
+    (import.meta.env.PUBLIC_SITE_URL as string | undefined) ?? DEFAULT_SITE_URL
+  );
+
+export const PUBLIC_SITE_NAME: string =
+  (import.meta.env.PUBLIC_SITE_NAME as string | undefined) ?? DEFAULT_SITE_NAME;
+
+export const PUBLIC_AUTHOR_NAME: string =
+  (import.meta.env.PUBLIC_AUTHOR_NAME as string | undefined) ?? DEFAULT_AUTHOR;
+
+export const PUBLIC_DEFAULT_SEO_DESCRIPTION: string =
+  (import.meta.env.PUBLIC_DEFAULT_SEO_DESCRIPTION as string | undefined) ??
+  DEFAULT_DESCRIPTION;
+
+export const PUBLIC_DEFAULT_OG_IMAGE: string =
+  (import.meta.env.PUBLIC_DEFAULT_OG_IMAGE as string | undefined) ??
+  `${PUBLIC_SITE_URL}/favicons/web-app-manifest-512x512.png`;
 
 export const PUBLIC_TELEGRAM_BOT_NAME: string =
   (import.meta.env.PUBLIC_TELEGRAM_BOT_NAME as string | undefined) ??

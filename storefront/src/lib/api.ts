@@ -31,6 +31,13 @@ function extractMessage(data: unknown): string | null {
   return null;
 }
 
+function getDefaultRequestFailedMessage() {
+  if (typeof document !== "undefined" && document.documentElement.lang.startsWith("am")) {
+    return "ጥያቄው አልተሳካም";
+  }
+  return "Request failed";
+}
+
 export function getApiErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
     const messageFromBody = extractMessage(error.response?.data);
@@ -38,12 +45,12 @@ export function getApiErrorMessage(error: unknown): string {
     if (error.response?.statusText) return error.response.statusText;
     if (typeof error.message === "string" && error.message.trim())
       return error.message;
-    return "Request failed";
+    return getDefaultRequestFailedMessage();
   }
 
   if (error instanceof Error && error.message.trim()) {
     return error.message;
   }
 
-  return "Request failed";
+  return getDefaultRequestFailedMessage();
 }

@@ -8,6 +8,7 @@ import type {
 } from "@/features/auth/components/AuthLogin/types";
 import { isTelegramBotConfigured } from "@/features/auth/components/AuthLogin/utils";
 import { api, getApiErrorMessage } from "@/lib/api";
+import { useI18n } from "@/features/i18n";
 
 type UseTelegramLinkWidgetArgs = {
   telegramBot: string;
@@ -20,6 +21,7 @@ export function useTelegramLinkWidget({
   enabled = true,
   onLinked,
 }: UseTelegramLinkWidgetArgs) {
+  const { t } = useI18n();
   const [status, setStatus] = useState<TelegramStatus>("loading");
   const [attempt, setAttempt] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -61,8 +63,8 @@ export function useTelegramLinkWidget({
       isHandlingLinkRef.current = true;
 
       const loadingToastKey = addToast({
-        title: "Linking Telegram…",
-        description: "Saving your Telegram account.",
+        title: t("auth.linkingTelegram"),
+        description: t("auth.savingTelegram"),
         color: "default",
         timeout: 60_000,
       });
@@ -70,14 +72,14 @@ export function useTelegramLinkWidget({
       try {
         await mutateAsyncRef.current(user);
         addToast({
-          title: "Telegram linked",
-          description: "Your Telegram account is now connected.",
+          title: t("auth.telegramLinked"),
+          description: t("auth.telegramLinkedDesc"),
           color: "success",
         });
         await onLinkedRef.current?.();
       } catch (error) {
         addToast({
-          title: "Link failed",
+          title: t("auth.linkFailed"),
           description: getApiErrorMessage(error),
           color: "danger",
         });
@@ -167,9 +169,8 @@ export function useTelegramLinkWidget({
       clearTimers();
       markError();
       addToast({
-        title: "Telegram unavailable",
-        description:
-          "Could not load Telegram widget. Please retry in a moment.",
+        title: t("auth.toast.telegramUnavailable"),
+        description: t("auth.telegramUnavailableDescLink"),
         color: "warning",
       });
     };
@@ -183,7 +184,7 @@ export function useTelegramLinkWidget({
         container.innerHTML = "";
       }
     };
-  }, [attempt, enabled, telegramBot]);
+  }, [attempt, enabled, t, telegramBot]);
 
   return { status, containerRef, retry };
 }

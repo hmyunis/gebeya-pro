@@ -1,17 +1,12 @@
 ---
 import Layout from "../../layouts/Layout.astro";
 import MerchantApplicationApp from "@/features/merchants/components/MerchantApplicationApp";
+import MerchantApplyHero from "@/features/merchants/components/MerchantApplyHero";
 ---
 
 <Layout title="Apply as Merchant" mainClass="max-w-5xl mx-auto px-4 pt-28 pb-16">
   <section class="space-y-6">
-    <div class="text-center">
-      <p class="text-[11px] uppercase tracking-[0.35em] text-ink-muted">Seller Program</p>
-      <h1 class="font-display mt-2 text-4xl leading-tight">Become a Merchant</h1>
-      <p class="mt-2 text-sm text-ink-muted">
-        Apply to list your products and manage incoming orders from your dashboard.
-      </p>
-    </div>
+    <MerchantApplyHero client:load />
     <MerchantApplicationApp client:only="react">
       <div slot="fallback" class="mx-auto max-w-3xl animate-pulse space-y-6">
         <div class="theme-form-shell rounded-3xl p-6 md:p-8">

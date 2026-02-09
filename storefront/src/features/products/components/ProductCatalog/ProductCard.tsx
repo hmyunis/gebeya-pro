@@ -2,6 +2,7 @@ import AddToCart from "@/features/cart/components/AddToCart";
 import { formatBirrLabel } from "@/lib/money";
 import { resolveImageUrl } from "@/lib/images";
 import type { Product } from "@/features/products/types";
+import { useI18n } from "@/features/i18n";
 
 export function ProductCard({
   product,
@@ -12,6 +13,7 @@ export function ProductCard({
   imageBase: string;
   onPreview?: (product: Product) => void;
 }) {
+  const { t } = useI18n();
   const previewImagePath =
     product.imageUrls && product.imageUrls.length > 0
       ? product.imageUrls[0]
@@ -51,7 +53,7 @@ export function ProductCard({
           </span>
         ) : null}
         <span className="theme-chip-contrast absolute bottom-3 right-3 rounded-full px-2.5 py-1 text-[10px] uppercase tracking-[0.2em]">
-          Preview
+          {t("product.preview")}
         </span>
       </div>
 
@@ -62,7 +64,7 @@ export function ProductCard({
         <div className="mt-auto flex items-center justify-between">
           {isFree ? (
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-green-600 md:text-base">
-              FREE
+              {t("product.free")}
             </p>
           ) : (
             <p className="text-sm font-semibold text-[color:var(--ink)] md:text-base">

@@ -7,6 +7,7 @@ import { isTelegramBotConfigured } from "./utils";
 import { loadUser } from "@/features/auth/store/authStore";
 import { setAuthToken } from "@/features/auth/utils/token";
 import { api, getApiErrorMessage } from "@/lib/api";
+import { useI18n } from "@/features/i18n";
 
 type UseTelegramWidgetArgs = {
   apiBase: string;
@@ -19,6 +20,7 @@ export function useTelegramWidget({
   telegramBot,
   returnTo,
 }: UseTelegramWidgetArgs) {
+  const { t } = useI18n();
   const [status, setStatus] = useState<TelegramStatus>("loading");
   const [attempt, setAttempt] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -41,8 +43,8 @@ export function useTelegramWidget({
       isHandlingAuthRef.current = true;
 
       const loadingToastKey = addToast({
-        title: "Signing in with Telegram…",
-        description: "Finalizing your login.",
+        title: t("auth.toast.telegramSigningIn"),
+        description: t("auth.toast.telegramFinalizing"),
         color: "default",
         timeout: 60_000,
       });
@@ -69,9 +71,8 @@ export function useTelegramWidget({
 
         if (!confirmed) {
           addToast({
-            title: "Login incomplete",
-            description:
-              "We couldn’t confirm your session. Please retry (and allow cookies if prompted).",
+            title: t("auth.loginIncomplete"),
+            description: t("auth.loginIncompleteDesc"),
             color: "warning",
           });
           return;
@@ -81,7 +82,7 @@ export function useTelegramWidget({
         window.location.assign(returnTo);
       } catch (error) {
         addToast({
-          title: "Telegram login failed",
+          title: t("auth.toast.telegramLoginFailed"),
           description: getApiErrorMessage(error),
           color: "danger",
         });
@@ -160,9 +161,8 @@ export function useTelegramWidget({
       clearTimers();
       markError();
       addToast({
-        title: "Telegram unavailable",
-        description:
-          "Could not load Telegram login. Please use password login or retry.",
+        title: t("auth.toast.telegramUnavailable"),
+        description: t("auth.toast.telegramUnavailableDesc"),
         color: "warning",
       });
     };
@@ -174,7 +174,7 @@ export function useTelegramWidget({
       clearTimers();
       container.innerHTML = "";
     };
-  }, [apiBase, attempt, telegramBot, returnTo]);
+  }, [apiBase, attempt, telegramBot, returnTo, t]);
 
   return { status, containerRef, retry };
 }

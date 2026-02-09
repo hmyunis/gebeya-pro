@@ -20,7 +20,11 @@ export async function readErrorMessage(response: Response): Promise<string> {
   } catch {
     // ignore
   }
-  return response.statusText || "Request failed";
+  if (response.statusText) return response.statusText;
+  if (typeof document !== "undefined" && document.documentElement.lang.startsWith("am")) {
+    return "ጥያቄው አልተሳካም";
+  }
+  return "Request failed";
 }
 
 export function isTelegramBotConfigured(botName: string): boolean {

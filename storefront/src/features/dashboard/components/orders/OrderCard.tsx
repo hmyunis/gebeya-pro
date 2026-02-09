@@ -3,9 +3,10 @@ import { Trash2 } from "lucide-react";
 
 import { resolveImageUrl } from "@/lib/images";
 import { formatBirrLabel } from "@/lib/money";
+import { formatLocaleDate, useI18n } from "@/features/i18n";
 
 import { StatusPill } from "./StatusPill";
-import { dateFormatter, timeFormatter, type CustomerOrder } from "./types";
+import { type CustomerOrder } from "./types";
 
 export function OrderCard({
   order,
@@ -24,6 +25,7 @@ export function OrderCard({
     itemCount: number;
   }) => void;
 }) {
+  const { locale, t } = useI18n();
   const createdAt = new Date(order.createdAt);
   const itemCount = order.items?.length ?? 0;
   const canDelete = order.status === "PENDING";
@@ -37,12 +39,24 @@ export function OrderCard({
       <div className="flex flex-col gap-3 pl-12 md:flex-row md:items-start md:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-3">
-            <p className="text-sm font-semibold">Order #{order.id}</p>
+            <p className="text-sm font-semibold">{t("overview.order", { id: order.id })}</p>
             <StatusPill status={order.status} />
           </div>
           <p className="text-ink-muted mt-1 text-xs">
-            {dateFormatter.format(createdAt)} · {timeFormatter.format(createdAt)}{" "}
-            · {itemCount} item{itemCount === 1 ? "" : "s"}
+            {formatLocaleDate(createdAt, locale, {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })}{" "}
+            ·{" "}
+            {formatLocaleDate(createdAt, locale, {
+              hour: "numeric",
+              minute: "2-digit",
+            })}{" "}
+            ·{" "}
+            {itemCount === 1
+              ? t("overview.itemCount", { count: itemCount })
+              : t("overview.itemCountPlural", { count: itemCount })}
           </p>
           {order.shippingAddress ? (
             <p className="text-ink-muted mt-2 text-sm">{order.shippingAddress}</p>
@@ -69,7 +83,7 @@ export function OrderCard({
                 })
               }
             >
-              Delete
+              {t("ordersList.delete")}
             </Button>
           ) : null}
         </div>
@@ -106,11 +120,10 @@ export function OrderCard({
         })}
         {(order.items ?? []).length > 6 ? (
           <span className="text-ink-muted text-xs">
-            +{(order.items ?? []).length - 6} more
+            {t("common.more", { count: (order.items ?? []).length - 6 })}
           </span>
         ) : null}
       </div>
     </article>
   );
 }
-

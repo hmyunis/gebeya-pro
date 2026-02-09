@@ -2,6 +2,7 @@ import { Button, Checkbox, Radio, RadioGroup } from "@heroui/react";
 
 import type { Category, PriceRange } from "@/features/products/types";
 import { formatPriceRangeLabel } from "@/features/products/utils/pricing";
+import { useI18n } from "@/features/i18n";
 
 export function ProductFilters({
   categories,
@@ -28,13 +29,15 @@ export function ProductFilters({
   onRetry: () => void;
   className?: string;
 }) {
+  const { t } = useI18n();
+
   return (
     <aside
       className={`glass-strong rounded-3xl p-4 md:p-5 text-xs ${className ?? ""}`}
     >
       <div className="flex items-center justify-between">
         <p className="text-[10px] uppercase tracking-[0.35em] text-ink-muted">
-          Filters
+          {t("common.filters")}
         </p>
         <Button
           size="sm"
@@ -42,13 +45,13 @@ export function ProductFilters({
           className="theme-action-soft"
           onPress={onReset}
         >
-          Reset
+          {t("common.reset")}
         </Button>
       </div>
 
       <div className="mt-4 space-y-5">
         <div>
-          <p className="text-xs font-semibold">Category</p>
+          <p className="text-xs font-semibold">{t("common.category")}</p>
           {isLoading ? (
             <div className="mt-2 space-y-2">
               {Array.from({ length: 4 }).map((_, idx) => (
@@ -60,14 +63,14 @@ export function ProductFilters({
             </div>
           ) : error ? (
             <div className="mt-2 rounded-2xl border border-rose-200 bg-rose-50/80 p-3 text-[11px] text-rose-700">
-              <p>Unable to load filters.</p>
+              <p>{t("filters.unable")}</p>
               <Button
                 size="sm"
                 variant="flat"
                 className="mt-2 border border-rose-200 bg-rose-50"
                 onPress={onRetry}
               >
-                Retry
+                {t("common.retry")}
               </Button>
             </div>
           ) : (
@@ -86,7 +89,7 @@ export function ProductFilters({
         </div>
 
         <div>
-          <p className="text-xs font-semibold">Price range (Birr)</p>
+          <p className="text-xs font-semibold">{t("common.priceRangeBirr")}</p>
           {isLoading ? (
             <div className="mt-3 space-y-2">
               {Array.from({ length: 5 }).map((_, idx) => (
@@ -102,7 +105,7 @@ export function ProductFilters({
               onValueChange={onPriceBucketChange}
               className="mt-2"
             >
-              <Radio value="all">All</Radio>
+              <Radio value="all">{t("common.all")}</Radio>
               {priceRanges.map((range) => (
                 <Radio key={range.id} value={range.id}>
                   {formatPriceRangeLabel(range)}

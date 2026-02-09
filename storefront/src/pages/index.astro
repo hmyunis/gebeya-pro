@@ -2,73 +2,11 @@
 import Layout from "../layouts/Layout.astro";
 import ProductCatalog from "@/features/products/components/ProductCatalog";
 import { API_BASE } from "@/config/env";
+import HomeHero from "@/features/home/components/HomeHero";
 ---
 
 <Layout title="Home" showNavbarCart={false}>
-	<section class="glass-strong relative overflow-hidden rounded-3xl px-5 py-8 md:px-10 md:py-12">
-		<div class="grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-			<div>
-				<p class="text-[11px] uppercase tracking-[0.4em] text-[color:var(--accent)]">
-					Gebeya marketplace
-				</p>
-				<h1 class="font-display mt-3 text-3xl leading-tight md:text-5xl">
-					Curated essentials. Crafted to feel effortless.
-				</h1>
-				<div class="mt-5 flex flex-wrap gap-3">
-					<a
-						href="#collection"
-						class="theme-cta rounded-full px-5 py-2.5 text-xs font-semibold shadow-[0_16px_40px_-24px_rgba(29,63,114,0.7)] transition-transform duration-300 hover:-translate-y-0.5"
-					>
-						Shop now
-					</a>
-					<a
-						href="/merchant/apply"
-						class="theme-cta-alt rounded-full border px-5 py-2.5 text-xs font-semibold shadow-[0_16px_40px_-24px_rgba(43,47,114,0.7)] transition-transform duration-300 hover:-translate-y-0.5"
-					>
-						Apply as merchant
-					</a>
-					<a
-						href="/login"
-						class="theme-action-soft rounded-full px-5 py-2.5 text-xs font-semibold"
-					>
-						Sign in
-					</a>
-				</div>
-			</div>
-			<div class="relative">
-				<div class="absolute -right-6 -top-8 h-24 w-24 rounded-3xl bg-[color:var(--orb-a)] blur-2xl"></div>
-				<div class="absolute bottom-0 left-6 h-20 w-20 rounded-full bg-[color:var(--orb-b)] blur-2xl"></div>
-				<div class="float-slow glass relative rounded-3xl p-5">
-					<div class="flex items-center justify-between">
-						<span class="text-[10px] uppercase tracking-[0.3em] text-ink-muted">
-							Featured
-						</span>
-						<span class="theme-pill rounded-full px-3 py-1 text-[10px]">
-							New
-						</span>
-					</div>
-					<div class="mt-4 grid gap-3">
-						<div class="theme-card rounded-2xl p-4">
-							<p class="font-display text-xl">Gebeya Pro Capsule</p>
-							<p class="text-ink-muted mt-1 text-xs">
-								Minimal, refined, ready daily.
-							</p>
-						</div>
-						<div class="grid grid-cols-2 gap-3 text-[11px] text-ink-muted">
-							<div class="theme-card rounded-2xl p-3">
-								<p class="text-base font-semibold text-[color:var(--ink)]">24h</p>
-								<p>response</p>
-							</div>
-							<div class="theme-card rounded-2xl p-3">
-								<p class="text-base font-semibold text-[color:var(--ink)]">100%</p>
-								<p>checked</p>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-	</section>
+	<HomeHero client:load />
 
 	<ProductCatalog client:load apiBase={API_BASE} imageBase={API_BASE} />
 </Layout>

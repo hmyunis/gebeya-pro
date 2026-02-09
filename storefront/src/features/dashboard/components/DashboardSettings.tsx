@@ -24,6 +24,7 @@ import { loadUser, logout } from "@/features/auth/store/authStore";
 import { useTelegramLinkWidget } from "@/features/auth/hooks/useTelegramLinkWidget";
 import { api, getApiErrorMessage } from "@/lib/api";
 import { resolveImageUrl } from "@/lib/images";
+import { useI18n } from "@/features/i18n";
 
 type CustomerProfile = {
   id: number;
@@ -38,6 +39,7 @@ type CustomerProfile = {
 const LOGIN_USERNAME_RE = /^@?[A-Za-z0-9][A-Za-z0-9_.-]*$/;
 
 export default function DashboardSettings({ title }: { title: string }) {
+  const { t } = useI18n();
   const queryClient = useQueryClient();
   const lastProfileErrorRef = useRef<string | null>(null);
   const syncRef = useRef<{
@@ -75,11 +77,11 @@ export default function DashboardSettings({ title }: { title: string }) {
     if (message === lastProfileErrorRef.current) return;
     lastProfileErrorRef.current = message;
     addToast({
-      title: "Settings unavailable",
+      title: t("settings.unavailable"),
       description: message,
       color: "danger",
     });
-  }, [profileQuery.error]);
+  }, [profileQuery.error, t]);
 
   useEffect(() => {
     if (!profileQuery.data) return;
@@ -147,8 +149,8 @@ export default function DashboardSettings({ title }: { title: string }) {
     },
     onSuccess: async () => {
       addToast({
-        title: "Profile updated",
-        description: "Your changes have been saved.",
+        title: t("settings.profileUpdated"),
+        description: t("settings.profileSaved"),
         color: "success",
       });
       await queryClient.invalidateQueries({ queryKey: ["users", "me"] });
@@ -156,7 +158,7 @@ export default function DashboardSettings({ title }: { title: string }) {
     },
     onError: (error) => {
       addToast({
-        title: "Update failed",
+        title: t("settings.updateFailed"),
         description: getApiErrorMessage(error),
         color: "danger",
       });
@@ -196,8 +198,8 @@ export default function DashboardSettings({ title }: { title: string }) {
     },
     onSuccess: async () => {
       addToast({
-        title: "Password saved",
-        description: "You can now sign in with your username and password.",
+        title: t("settings.passwordSaved"),
+        description: t("settings.passwordSavedDesc"),
         color: "success",
       });
       setCurrentPassword("");
@@ -208,7 +210,7 @@ export default function DashboardSettings({ title }: { title: string }) {
     },
     onError: (error) => {
       addToast({
-        title: "Password update failed",
+        title: t("settings.passwordUpdateFailed"),
         description: getApiErrorMessage(error),
         color: "danger",
       });
@@ -237,8 +239,8 @@ export default function DashboardSettings({ title }: { title: string }) {
       setAvatarFile(null);
       setAvatarUrl(payload.avatarUrl ?? "");
       addToast({
-        title: "Avatar updated",
-        description: "Your new photo is saved.",
+        title: t("settings.avatarUpdated"),
+        description: t("settings.avatarSaved"),
         color: "success",
       });
       await queryClient.invalidateQueries({ queryKey: ["users", "me"] });
@@ -246,7 +248,7 @@ export default function DashboardSettings({ title }: { title: string }) {
     },
     onError: (error) => {
       addToast({
-        title: "Upload failed",
+        title: t("settings.uploadFailed"),
         description: getApiErrorMessage(error),
         color: "danger",
       });
@@ -263,8 +265,8 @@ export default function DashboardSettings({ title }: { title: string }) {
       if (!file) return;
       if (!file.type.startsWith("image/")) {
         addToast({
-          title: "Invalid file",
-          description: "Please choose an image file.",
+          title: t("settings.invalidFile"),
+          description: t("settings.chooseImage"),
           color: "warning",
         });
         return;
@@ -299,9 +301,9 @@ export default function DashboardSettings({ title }: { title: string }) {
             <p className="text-[11px] uppercase tracking-[0.35em] text-ink-muted">
               {title}
             </p>
-            <p className="font-display mt-2 text-2xl">Customer settings</p>
+            <p className="font-display mt-2 text-2xl">{t("settings.customerSettings")}</p>
             <p className="mt-2 text-sm text-ink-muted">
-              Update your profile, manage security, and connect accounts.
+              {t("settings.subtitle")}
             </p>
           </div>
 
@@ -316,7 +318,7 @@ export default function DashboardSettings({ title }: { title: string }) {
                 .then(() => true)
                 .catch((error) => {
                   addToast({
-                    title: "Logout warning",
+                    title: t("settings.logoutWarning"),
                     description: getApiErrorMessage(error),
                     color: "warning",
                   });
@@ -324,16 +326,16 @@ export default function DashboardSettings({ title }: { title: string }) {
                 });
 
               addToast({
-                title: "Logged out",
+                title: t("settings.loggedOut"),
                 description: serverOk
-                  ? "You have been signed out successfully."
-                  : "Signed out locally. Please retry if this persists.",
+                  ? t("navbar.toast.loggedOut.description.server")
+                  : t("navbar.toast.loggedOut.description.local"),
                 color: "success",
               });
               window.location.replace("/");
             }}
           >
-            Sign out
+            {t("common.signOut")}
           </Button>
         </div>
       </div>
@@ -343,11 +345,11 @@ export default function DashboardSettings({ title }: { title: string }) {
           <CardBody className="space-y-5 p-6">
             <div>
               <p className="text-[11px] uppercase tracking-[0.35em] text-ink-muted">
-                Profile
+                {t("common.profile")}
               </p>
-              <h3 className="font-display mt-2 text-xl">Basics</h3>
+              <h3 className="font-display mt-2 text-xl">{t("settings.profileBasics")}</h3>
               <p className="mt-1 text-sm text-ink-muted">
-                Keep your name and avatar up to date.
+                {t("settings.profileHint")}
               </p>
             </div>
 
@@ -377,20 +379,22 @@ export default function DashboardSettings({ title }: { title: string }) {
                         ? `@${profile.loginUsername.replace(/^@/, "")}`
                         : profile?.telegramUsername
                           ? `@${profile.telegramUsername.replace(/^@/, "")}`
-                          : "Account"}
+                          : t("settings.accountFallback")}
                     </p>
                     <p className="text-xs text-ink-muted">
-                      User ID: {profile?.id ?? "—"}
+                      {profile?.id
+                        ? t("settings.userId", { id: profile.id })
+                        : t("settings.userIdUnknown")}
                     </p>
                   </div>
                 </div>
 
                 <div className="flex flex-col gap-3 md:flex-row md:items-end">
                   <Input
-                    label="Full name"
+                    label={t("settings.fullName")}
                     value={firstName}
                     onValueChange={setFirstName}
-                    placeholder="Abebe Bekele"
+                    placeholder={t("settings.fullNamePlaceholder")}
                     startContent={<User size={16} />}
                     radius="lg"
                     variant="bordered"
@@ -404,10 +408,10 @@ export default function DashboardSettings({ title }: { title: string }) {
                     onPress={() =>
                       updateProfileMutation.mutate({
                         firstName: firstName.trim(),
-                      })
-                    }
-                  >
-                    Save
+                    })
+                  }
+                >
+                    {t("common.save")}
                   </Button>
                 </div>
 
@@ -427,10 +431,10 @@ export default function DashboardSettings({ title }: { title: string }) {
                     isDisabled={uploadAvatarMutation.isPending}
                     startContent={<Camera size={16} />}
                   >
-                    Choose avatar
+                    {t("settings.chooseAvatar")}
                   </Button>
                   <p className="text-xs text-ink-muted">
-                    PNG or JPG, square images work best.
+                    {t("settings.avatarHint")}
                   </p>
                 </div>
 
@@ -440,10 +444,10 @@ export default function DashboardSettings({ title }: { title: string }) {
                   <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                     <div>
                       <p className="text-[11px] uppercase tracking-[0.35em] text-ink-muted">
-                        Telegram
+                        {t("common.linkTelegram")}
                       </p>
                       <p className="mt-1 text-sm text-ink-muted">
-                        Link Telegram to enable one-tap sign in.
+                        {t("settings.telegramHint")}
                       </p>
                     </div>
                   </div>
@@ -453,22 +457,24 @@ export default function DashboardSettings({ title }: { title: string }) {
                   ) : profile?.hasTelegram ? (
                     <div className="flex flex-col gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 md:flex-row md:items-center md:justify-between">
                       <div>
-                        <p className="font-semibold">Telegram linked</p>
+                        <p className="font-semibold">{t("settings.telegramLinked")}</p>
                         <p className="text-xs opacity-80">
                           {profile.telegramUsername
-                            ? `Connected as @${profile.telegramUsername.replace(/^@/, "")}`
-                            : "Connected"}
+                            ? t("settings.connectedAs", {
+                              username: profile.telegramUsername.replace(/^@/, ""),
+                            })
+                            : t("settings.connected")}
                         </p>
                       </div>
                       <p className="text-xs opacity-80">
-                        You can log in with Telegram.
+                        {t("settings.loginWithTelegram")}
                       </p>
                     </div>
                   ) : (
                     <div className="space-y-3">
                       {telegramStatus === "disabled" ? (
                         <div className="rounded-2xl border border-black/5 bg-black/5 px-4 py-3 text-sm text-ink-muted">
-                          Telegram linking isn’t configured for this storefront.
+                          {t("settings.telegramNotConfigured")}
                         </div>
                       ) : telegramStatus === "loading" ? (
                         <div className="space-y-3">
@@ -478,9 +484,9 @@ export default function DashboardSettings({ title }: { title: string }) {
                       ) : telegramStatus === "error" ? (
                         <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 md:flex-row md:items-center md:justify-between">
                           <div>
-                            <p className="font-semibold">Telegram unavailable</p>
+                            <p className="font-semibold">{t("settings.telegramUnavailable")}</p>
                             <p className="text-xs opacity-80">
-                              We couldn’t load the Telegram widget.
+                              {t("settings.telegramUnavailableDesc")}
                             </p>
                           </div>
                           <Button
@@ -488,7 +494,7 @@ export default function DashboardSettings({ title }: { title: string }) {
                             variant="flat"
                             onPress={retryTelegram}
                           >
-                            Retry
+                            {t("common.retry")}
                           </Button>
                         </div>
                       ) : null}
@@ -498,8 +504,7 @@ export default function DashboardSettings({ title }: { title: string }) {
                         className="flex min-h-12 items-center justify-center"
                       />
                       <p className="text-xs text-ink-muted">
-                        By linking Telegram, your profile name and avatar may
-                        update to match your Telegram account.
+                        {t("settings.telegramProfileSync")}
                       </p>
                     </div>
                   )}
@@ -513,11 +518,11 @@ export default function DashboardSettings({ title }: { title: string }) {
           <CardBody className="space-y-5 p-6">
             <div>
               <p className="text-[11px] uppercase tracking-[0.35em] text-ink-muted">
-                Security
+                {t("common.security")}
               </p>
-              <h3 className="font-display mt-2 text-xl">Password login</h3>
+              <h3 className="font-display mt-2 text-xl">{t("settings.passwordLogin")}</h3>
               <p className="mt-1 text-sm text-ink-muted">
-                Set a password to sign in without Telegram.
+                {t("settings.passwordLoginHint")}
               </p>
             </div>
 
@@ -532,11 +537,11 @@ export default function DashboardSettings({ title }: { title: string }) {
             ) : (
               <div className="space-y-4">
                 <Input
-                  label="Login username"
+                  label={t("settings.loginUsername")}
                   value={loginUsername}
                   onValueChange={setLoginUsername}
-                  placeholder="@abebe"
-                  description='3–32 chars. Letters, numbers, ".", "_", "-" (optional "@").'
+                  placeholder={t("settings.loginUsernamePlaceholder")}
+                  description={t("settings.loginUsernameDesc")}
                   startContent={<UserRound size={16} />}
                   radius="lg"
                   variant="bordered"
@@ -545,7 +550,7 @@ export default function DashboardSettings({ title }: { title: string }) {
 
                 {hasExistingPassword ? (
                   <Input
-                    label="Current password"
+                    label={t("settings.currentPassword")}
                     type="password"
                     value={currentPassword}
                     onValueChange={setCurrentPassword}
@@ -556,13 +561,12 @@ export default function DashboardSettings({ title }: { title: string }) {
                   />
                 ) : (
                   <div className="rounded-2xl border border-black/5 bg-black/5 px-4 py-3 text-xs text-ink-muted">
-                    If you already have a password set, you’ll be asked for your
-                    current password.
+                    {t("settings.currentPasswordHint")}
                   </div>
                 )}
 
                 <Input
-                  label="New password"
+                  label={t("settings.newPassword")}
                   type="password"
                   value={newPassword}
                   onValueChange={setNewPassword}
@@ -573,7 +577,7 @@ export default function DashboardSettings({ title }: { title: string }) {
                 />
 
                 <Input
-                  label="Confirm new password"
+                  label={t("settings.confirmNewPassword")}
                   type="password"
                   value={confirmPassword}
                   onValueChange={setConfirmPassword}
@@ -603,7 +607,7 @@ export default function DashboardSettings({ title }: { title: string }) {
                     });
                   }}
                 >
-                  Save password
+                  {t("settings.savePassword")}
                 </Button>
               </div>
             )}

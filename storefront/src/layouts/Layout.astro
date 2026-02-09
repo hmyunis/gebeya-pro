@@ -66,15 +66,27 @@ const websiteJsonLd = JSON.stringify({
   "@type": "WebSite",
   name: PUBLIC_SITE_NAME,
   url: PUBLIC_SITE_URL,
-  inLanguage: "en",
+  inLanguage: "am-ET",
 });
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="am-ET">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
+    <script is:inline>
+      (() => {
+        const key = "gebeya-storefront-locale";
+        try {
+          const value = localStorage.getItem(key);
+          const locale = value === "en" ? "en-US" : "am-ET";
+          document.documentElement.lang = locale;
+        } catch {
+          document.documentElement.lang = "am-ET";
+        }
+      })();
+    </script>
     <script is:inline>
       (() => {
         const storageKey = "gebeya-storefront-theme";
@@ -94,7 +106,12 @@ const websiteJsonLd = JSON.stringify({
           root.dataset.theme = theme;
           root.classList.toggle("dark", theme === dark);
         } catch {
-          document.documentElement.dataset.theme = light;
+          const root = document.documentElement;
+          const fallbackTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
+            ? dark
+            : light;
+          root.dataset.theme = fallbackTheme;
+          root.classList.toggle("dark", fallbackTheme === dark);
         }
       })();
     </script>
@@ -134,7 +151,7 @@ const websiteJsonLd = JSON.stringify({
     <link rel="manifest" href="/favicons/site.webmanifest" />
 
     <meta property="og:type" content="website" />
-    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale" content="am_ET" />
     <meta property="og:site_name" content={PUBLIC_SITE_NAME} />
     <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={description} />

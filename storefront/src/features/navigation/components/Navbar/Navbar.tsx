@@ -25,21 +25,25 @@ import {
   resolveStorefrontTheme,
   type StorefrontTheme,
 } from "@/features/theme/storefrontTheme";
+import { I18nProvider, LanguageToggle, useI18n } from "@/features/i18n";
 
 import { Brand } from "./Brand";
 import { UserMenu } from "./UserMenu";
 
 export default function AppNavbar({ showCartButton = true }: { showCartButton?: boolean }) {
   return (
-    <HeroUIProvider>
-      <QueryProvider>
-        <NavbarContentRoot showCartButton={showCartButton} />
-      </QueryProvider>
-    </HeroUIProvider>
+    <I18nProvider>
+      <HeroUIProvider>
+        <QueryProvider>
+          <NavbarContentRoot showCartButton={showCartButton} />
+        </QueryProvider>
+      </HeroUIProvider>
+    </I18nProvider>
   );
 }
 
 function NavbarContentRoot({ showCartButton = true }: { showCartButton?: boolean }) {
+  const { t } = useI18n();
   const count = useStore($cartCount);
   const cartItems = useStore($cartItems);
   const { user, authReady } = useAuth();
@@ -48,6 +52,7 @@ function NavbarContentRoot({ showCartButton = true }: { showCartButton?: boolean
   const [isOrderOpen, setIsOrderOpen] = useState(false);
   const [theme, setTheme] = useState<StorefrontTheme>("light");
   const [themeReady, setThemeReady] = useState(false);
+  const [showMobileLangToggle, setShowMobileLangToggle] = useState(true);
 
   const items = useMemo(() => Object.values(cartItems), [cartItems]);
   const total = useMemo(
@@ -60,6 +65,9 @@ function NavbarContentRoot({ showCartButton = true }: { showCartButton?: boolean
   const avatarSrc = useMemo(() => getAvatarSrc(user, API_BASE), [user]);
   const showBecomeMerchantCta =
     authReady && String(user?.role ?? "").toLowerCase() !== "merchant";
+  const isMerchantApplyRoute =
+    typeof window !== "undefined" &&
+    window.location.pathname.replace(/\/+$/, "") === "/merchant/apply";
 
   const openOrderModal = () => {
     setIsCartOpen(false);
@@ -96,6 +104,34 @@ function NavbarContentRoot({ showCartButton = true }: { showCartButton?: boolean
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+
+    let lastY = window.scrollY;
+    const threshold = 2;
+
+    const onScroll = () => {
+      const currentY = window.scrollY;
+
+      if (currentY <= 20) {
+        setShowMobileLangToggle(true);
+        lastY = currentY;
+        return;
+      }
+
+      if (currentY > lastY + threshold) {
+        setShowMobileLangToggle(false);
+      } else if (currentY < lastY - threshold) {
+        setShowMobileLangToggle(true);
+      }
+
+      lastY = currentY;
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
     if (!showCartButton) return;
     if (!authReady) return;
 
@@ -119,8 +155,8 @@ function NavbarContentRoot({ showCartButton = true }: { showCartButton?: boolean
   const handleCheckout = () => {
     if (!user) {
       addToast({
-        title: "Login required",
-        description: "Please login with Telegram to place your order.",
+        title: t("navbar.toast.loginRequired.title"),
+        description: t("navbar.toast.loginRequired.description"),
         color: "warning",
       });
       const url = new URL(window.location.href);
@@ -139,7 +175,7 @@ function NavbarContentRoot({ showCartButton = true }: { showCartButton?: boolean
       .then(() => true)
       .catch((error) => {
         addToast({
-          title: "Logout warning",
+          title: t("navbar.toast.logoutWarning.title"),
           description: getApiErrorMessage(error),
           color: "warning",
         });
@@ -147,10 +183,10 @@ function NavbarContentRoot({ showCartButton = true }: { showCartButton?: boolean
       });
 
     addToast({
-      title: "Logged out",
+      title: t("navbar.toast.loggedOut.title"),
       description: serverOk
-        ? "You have been signed out successfully."
-        : "Signed out locally. Please retry if this persists.",
+        ? t("navbar.toast.loggedOut.description.server")
+        : t("navbar.toast.loggedOut.description.local"),
       color: "success",
     });
     window.location.replace("/");
@@ -174,8 +210,8 @@ function NavbarContentRoot({ showCartButton = true }: { showCartButton?: boolean
 
   const isDarkTheme = themeReady && theme === "dark";
   const themeToggleLabel = isDarkTheme
-    ? "Switch to light mode"
-    : "Switch to dark mode";
+    ? t("navbar.switchToLight")
+    : t("navbar.switchToDark");
 
   return (
     <>
@@ -186,6 +222,9 @@ function NavbarContentRoot({ showCartButton = true }: { showCartButton?: boolean
         <Brand />
 
         <NavbarContent justify="end" className="gap-1 sm:gap-2">
+          <div className="hidden sm:block">
+            <LanguageToggle />
+          </div>
           <Button
             isIconOnly
             variant="light"
@@ -208,7 +247,7 @@ function NavbarContentRoot({ showCartButton = true }: { showCartButton?: boolean
                 href="/merchant/apply"
                 size="sm"
                 isIconOnly
-                aria-label="Apply as merchant"
+                aria-label={t("navbar.applyAsMerchant")}
                 className="theme-action-soft sm:hidden"
               >
                 <Store className="h-4 w-4" />
@@ -220,12 +259,14 @@ function NavbarContentRoot({ showCartButton = true }: { showCartButton?: boolean
                 variant="flat"
                 className="theme-action-soft hidden sm:inline-flex"
               >
-                Become a Merchant
+                {t("navbar.becomeMerchant")}
               </Button>
             </>
           ) : null}
           {showCartButton ? (
-            <CartIconButton count={count} onPress={() => setIsCartOpen(true)} />
+            <div className={isMerchantApplyRoute ? "hidden sm:block" : ""}>
+              <CartIconButton count={count} onPress={() => setIsCartOpen(true)} />
+            </div>
           ) : null}
           <UserMenu
             isAuthenticated={Boolean(user)}
@@ -237,6 +278,16 @@ function NavbarContentRoot({ showCartButton = true }: { showCartButton?: boolean
           />
         </NavbarContent>
       </Navbar>
+      <div
+        className={[
+          "fixed right-3 top-[calc(env(safe-area-inset-top)+4.4rem)] z-[55] transition-all duration-200 sm:hidden",
+          showMobileLangToggle
+            ? "translate-y-0 opacity-100"
+            : "-translate-y-2 pointer-events-none opacity-0",
+        ].join(" ")}
+      >
+        <LanguageToggle />
+      </div>
 
       {showCartButton ? (
         <>

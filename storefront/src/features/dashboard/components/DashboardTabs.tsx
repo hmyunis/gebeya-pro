@@ -5,24 +5,25 @@ import { useState } from "react";
 import DashboardOverview from "@/features/dashboard/components/DashboardOverview";
 import DashboardOrders from "@/features/dashboard/components/DashboardOrders";
 import DashboardSettings from "@/features/dashboard/components/DashboardSettings";
+import { useI18n } from "@/features/i18n";
 
 type DashboardTabKey = "overview" | "orders" | "settings";
 
-const TAB_TITLES: Record<DashboardTabKey, string> = {
-  overview: "Overview",
-  orders: "Orders",
-  settings: "Settings",
-};
-
 export default function DashboardTabs() {
+  const { t } = useI18n();
   const [selectedKey, setSelectedKey] = useState<DashboardTabKey>("overview");
-  const title = TAB_TITLES[selectedKey];
+  const title =
+    selectedKey === "overview"
+      ? t("dashboard.overview")
+      : selectedKey === "orders"
+        ? t("dashboard.orders")
+        : t("dashboard.settings");
 
   return (
     <div className="pb-6">
       <div className="flex justify-center">
         <Tabs
-          aria-label="Dashboard navigation"
+          aria-label={t("dashboard.navigation")}
           variant="light"
           radius="full"
           selectedKey={selectedKey}
@@ -40,7 +41,7 @@ export default function DashboardTabs() {
             title={
               <span className="flex items-center gap-2">
                 <LayoutDashboard size={16} />
-                Overview
+                {t("dashboard.overview")}
               </span>
             }
           />
@@ -49,7 +50,7 @@ export default function DashboardTabs() {
             title={
               <span className="flex items-center gap-2">
                 <Package size={16} />
-                <span className="hidden sm:inline">Orders</span>
+                <span className="hidden sm:inline">{t("dashboard.orders")}</span>
               </span>
             }
           />
@@ -58,7 +59,7 @@ export default function DashboardTabs() {
             title={
               <span className="flex items-center gap-2">
                 <Settings size={16} />
-                <span className="hidden sm:inline">Settings</span>
+                <span className="hidden sm:inline">{t("dashboard.settings")}</span>
               </span>
             }
           />

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Send } from 'lucide-react';
 import { useMutation } from "@tanstack/react-query";
 import { api } from '@/lib/api';
+import { useI18n } from "@/features/i18n";
 
 const HTTP_URL_PATTERN = /https?:\/\//i;
 
@@ -15,6 +16,7 @@ function isEmailOrPhone(value: string) {
 }
 
 export function ContactUsForm() {
+    const { t } = useI18n();
     const [name, setName] = useState('');
     const [contact, setContact] = useState('');
     const [message, setMessage] = useState('');
@@ -43,22 +45,22 @@ export function ContactUsForm() {
         const nameHasUrl = HTTP_URL_PATTERN.test(name);
         const contactHasUrl = HTTP_URL_PATTERN.test(contact);
         return {
-            name: nameHasUrl ? 'Links are not allowed.' : nameOk ? '' : 'Name is required.',
+            name: nameHasUrl ? t("contact.linksNotAllowed") : nameOk ? '' : t("contact.nameRequired"),
             contact: contactHasUrl
-                ? 'Links are not allowed.'
+                ? t("contact.linksNotAllowed")
                 : contactOk
                   ? ''
-                  : 'Enter a valid email or phone number.',
+                  : t("contact.invalidContact"),
             message: messageHasUrl
-                ? 'Links are not allowed.'
+                ? t("contact.linksNotAllowed")
                 : messageOk
                   ? ''
-                  : 'Message is required (max 100 chars).',
+                  : t("contact.messageRequired"),
             canSubmit:
                 nameOk && contactOk && messageOk && !nameHasUrl && !contactHasUrl && !messageHasUrl,
             messageHasUrl,
         };
-    }, [contact, message, name, isTouched]);
+    }, [contact, isTouched, message, name, t]);
 
     const handleSafeChange = (value: string, setter: (value: string) => void) => {
         setStatus(null);
@@ -66,7 +68,7 @@ export function ContactUsForm() {
         if (HTTP_URL_PATTERN.test(value)) {
             setStatus({
                 kind: 'warning',
-                text: 'Links starting with http are not allowed.',
+                text: t("contact.httpNotAllowed"),
             });
             return;
         }
@@ -83,7 +85,7 @@ export function ContactUsForm() {
         event.preventDefault();
         setIsTouched(true);
         if (!errors.canSubmit) {
-            setStatus({ kind: 'warning', text: 'Please fix the highlighted fields.' });
+            setStatus({ kind: 'warning', text: t("contact.fixErrors") });
             return;
         }
 
@@ -94,7 +96,7 @@ export function ContactUsForm() {
                 contact: contact.trim(),
                 message: message.trim(),
             });
-            setStatus({ kind: 'success', text: 'Message sent. Thanks!' });
+            setStatus({ kind: 'success', text: t("contact.sent") });
             setName('');
             setContact('');
             setMessage('');
@@ -103,7 +105,7 @@ export function ContactUsForm() {
             console.error(error);
             setStatus({
                 kind: 'error',
-                text: error?.response?.data?.message || 'Failed to send. Try again later.',
+                text: error?.response?.data?.message || t("contact.sendFailed"),
             });
         }
     };
@@ -112,7 +114,7 @@ export function ContactUsForm() {
         <form onSubmit={onSubmit} className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
-                    <label className="text-xs font-medium text-slate-300">Name</label>
+                    <label className="text-xs font-medium text-slate-300">{t("contact.name")}</label>
                     <input
                         value={name}
                         onChange={(e) => handleSafeChange(e.target.value, setName)}
@@ -125,7 +127,7 @@ export function ContactUsForm() {
                             errors.name ? 'border-rose-400/60' : 'border-white/10',
                             'focus:border-blue-400/80 focus:ring-2 focus:ring-blue-400/15',
                         ].join(' ')}
-                        placeholder="Your name"
+                        placeholder={t("contact.namePlaceholder")}
                     />
                     {errors.name ? (
                         <p className="text-[11px] text-rose-300">{errors.name}</p>
@@ -133,7 +135,7 @@ export function ContactUsForm() {
                 </div>
 
                 <div className="space-y-1">
-                    <label className="text-xs font-medium text-slate-300">Email or phone</label>
+                    <label className="text-xs font-medium text-slate-300">{t("contact.emailOrPhone")}</label>
                     <input
                         value={contact}
                         onChange={(e) => handleSafeChange(e.target.value, setContact)}
@@ -146,7 +148,7 @@ export function ContactUsForm() {
                             errors.contact ? 'border-rose-400/60' : 'border-white/10',
                             'focus:border-blue-400/80 focus:ring-2 focus:ring-blue-400/15',
                         ].join(' ')}
-                        placeholder="name@example.com or +251..."
+                        placeholder={t("contact.contactPlaceholder")}
                     />
                     {errors.contact ? (
                         <p className="text-[11px] text-rose-300">{errors.contact}</p>
@@ -156,9 +158,9 @@ export function ContactUsForm() {
 
             <div className="space-y-1">
                 <div className="flex items-center justify-between">
-                    <label className="text-xs font-medium text-slate-300">Message</label>
+                    <label className="text-xs font-medium text-slate-300">{t("contact.message")}</label>
                     <span className="text-[10px] text-slate-500">
-                        {Math.max(0, remaining)} left
+                        {t("contact.left", { count: Math.max(0, remaining) })}
                     </span>
                 </div>
                 <textarea
@@ -173,7 +175,7 @@ export function ContactUsForm() {
                         errors.message ? 'border-rose-400/60' : 'border-white/10',
                         'focus:border-blue-400/80 focus:ring-2 focus:ring-blue-400/15',
                     ].join(' ')}
-                    placeholder="Write a short message…"
+                    placeholder={t("contact.messagePlaceholder")}
                 />
                 {errors.message ? (
                     <p className="text-[11px] text-rose-300">{errors.message}</p>
@@ -210,7 +212,7 @@ export function ContactUsForm() {
                             : 'hover:opacity-95',
                     ].join(' ')}
                 >
-                    {contactMutation.isPending ? 'Sending…' : 'Send message'}
+                    {contactMutation.isPending ? t("contact.sending") : t("contact.send")}
                     <Send className="h-4 w-4" />
                 </button>
             </div>

@@ -9,6 +9,7 @@ import {
 import { Trash2 } from "lucide-react";
 
 import { formatBirrLabel } from "@/lib/money";
+import { useI18n } from "@/features/i18n";
 
 export function DeleteOrderConfirmModal({
   candidate,
@@ -21,6 +22,8 @@ export function DeleteOrderConfirmModal({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  const { t } = useI18n();
+
   return (
     <Modal
       isOpen={Boolean(candidate)}
@@ -39,18 +42,19 @@ export function DeleteOrderConfirmModal({
     >
       <ModalContent>
         <ModalHeader className="flex flex-col gap-1">
-          Delete pending order
+          {t("ordersDelete.title")}
         </ModalHeader>
         <ModalBody>
           <p className="text-sm text-ink-muted">
-            This will permanently remove your order. You can only delete orders
-            while they are still pending.
+            {t("ordersDelete.description")}
           </p>
           {candidate ? (
             <div className="rounded-2xl border border-black/10 bg-white/70 p-4 text-sm">
-              <p className="font-semibold">Order #{candidate.id}</p>
+              <p className="font-semibold">{t("overview.order", { id: candidate.id })}</p>
               <p className="mt-1 text-ink-muted">
-                {candidate.itemCount} item{candidate.itemCount === 1 ? "" : "s"}{" "}
+                {candidate.itemCount === 1
+                  ? t("overview.itemCount", { count: candidate.itemCount })
+                  : t("overview.itemCountPlural", { count: candidate.itemCount })}{" "}
                 · {formatBirrLabel(candidate.totalAmount)}
               </p>
             </div>
@@ -63,7 +67,7 @@ export function DeleteOrderConfirmModal({
             isDisabled={isDeleting}
             onPress={onCancel}
           >
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button
             color="danger"
@@ -72,11 +76,10 @@ export function DeleteOrderConfirmModal({
             startContent={<Trash2 size={16} />}
             onPress={onConfirm}
           >
-            Delete order
+            {t("ordersDelete.deleteOrder")}
           </Button>
         </ModalFooter>
       </ModalContent>
     </Modal>
   );
 }
-

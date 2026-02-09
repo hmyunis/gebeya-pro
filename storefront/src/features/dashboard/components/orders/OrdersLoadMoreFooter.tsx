@@ -1,5 +1,6 @@
 import { Button, Skeleton } from "@heroui/react";
 import type { RefObject } from "react";
+import { useI18n } from "@/features/i18n";
 
 export function OrdersLoadMoreFooter({
   hasOrders,
@@ -16,6 +17,8 @@ export function OrdersLoadMoreFooter({
   onFetchNextPage: () => void;
   sentinelRef: RefObject<HTMLDivElement | null>;
 }) {
+  const { t } = useI18n();
+
   if (!hasOrders) return null;
 
   return (
@@ -39,7 +42,7 @@ export function OrdersLoadMoreFooter({
         </div>
       ) : isFetchNextPageError ? (
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <p className="text-sm text-ink-muted">Could not load more orders.</p>
+          <p className="text-sm text-ink-muted">{t("ordersLoadMore.error")}</p>
           <Button
             size="sm"
             radius="full"
@@ -47,12 +50,12 @@ export function OrdersLoadMoreFooter({
             onPress={onFetchNextPage}
             className="border border-black/10 bg-white/70 text-[#12141a]"
           >
-            Retry
+            {t("common.retry")}
           </Button>
         </div>
       ) : hasNextPage ? (
         <div className="flex flex-col gap-2 text-center md:flex-row md:items-center md:justify-between">
-          <p className="text-sm text-ink-muted">Loading more as you scroll…</p>
+          <p className="text-sm text-ink-muted">{t("ordersLoadMore.loading")}</p>
           <Button
             size="sm"
             radius="full"
@@ -60,11 +63,11 @@ export function OrdersLoadMoreFooter({
             onPress={onFetchNextPage}
             className="border border-black/10 bg-white/70 text-[#12141a]"
           >
-            Load more
+            {t("ordersLoadMore.loadMore")}
           </Button>
         </div>
       ) : (
-        <p className="text-center text-sm text-ink-muted">You’ve reached the end.</p>
+        <p className="text-center text-sm text-ink-muted">{t("ordersLoadMore.end")}</p>
       )}
       <div ref={sentinelRef} className="h-1 w-full" />
     </div>

@@ -13,6 +13,7 @@ import OrderModal from "@/features/orders/components/OrderModal";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { requireLogin } from "@/features/auth/store/authStore";
 import QueryProvider from "@/app/QueryProvider";
+import { I18nProvider, useI18n } from "@/features/i18n";
 
 import { ProductFilters } from "./ProductFilters";
 import { ProductGrid } from "./ProductGrid";
@@ -27,9 +28,11 @@ export default function ProductCatalog({
   imageBase: string;
 }) {
   return (
-    <QueryProvider>
-      <ProductCatalogContent apiBase={apiBase} imageBase={imageBase} />
-    </QueryProvider>
+    <I18nProvider>
+      <QueryProvider>
+        <ProductCatalogContent apiBase={apiBase} imageBase={imageBase} />
+      </QueryProvider>
+    </I18nProvider>
   );
 }
 
@@ -40,6 +43,7 @@ function ProductCatalogContent({
   apiBase: string;
   imageBase: string;
 }) {
+  const { t } = useI18n();
   const baseUrl = useMemo(() => stripTrailingSlash(apiBase), [apiBase]);
 
   const count = useStore($cartCount);
@@ -112,8 +116,8 @@ function ProductCatalogContent({
   const handleCheckout = () => {
     if (!user) {
       addToast({
-        title: "Login required",
-        description: "Please login with Telegram to place your order.",
+        title: t("navbar.toast.loginRequired.title"),
+        description: t("navbar.toast.loginRequired.description"),
         color: "warning",
       });
       const url = new URL(window.location.href);
@@ -234,10 +238,10 @@ function ProductCatalogContent({
       <div className="flex flex-col items-center gap-4">
         <div className="text-center">
           <p className="text-[11px] uppercase tracking-[0.35em] text-[color:var(--accent-2)]">
-            Browse products
+            {t("product.browse")}
           </p>
           <h2 className="font-display mt-2 text-2xl md:text-3xl">
-            Find what fits your day
+            {t("product.findFits")}
           </h2>
         </div>
         <div className="flex w-full max-w-2xl items-center gap-2">
@@ -246,7 +250,7 @@ function ProductCatalogContent({
               isIconOnly
               variant="flat"
               radius="full"
-              aria-label="Open filters"
+              aria-label={t("product.openFilters")}
               className="theme-action-soft shrink-0"
               onPress={() => setIsFilterDrawerOpen(true)}
             >
@@ -258,7 +262,7 @@ function ProductCatalogContent({
               size="md"
               value={search}
               onValueChange={setSearch}
-              placeholder="Search products"
+              placeholder={t("product.searchPlaceholder")}
               variant="bordered"
               radius="full"
               classNames={{
@@ -302,11 +306,13 @@ function ProductCatalogContent({
         <div>
           <div className="mb-4 flex flex-wrap gap-2">
             <span className="theme-pill rounded-full px-3 py-1 text-[11px]">
-              {isLoading ? "Loading..." : `${resultCount} results`}
+              {isLoading
+                ? t("common.loading")
+                : t("product.results", { count: resultCount })}
             </span>
             {search ? (
               <span className="theme-pill rounded-full px-3 py-1 text-[11px]">
-                Search: {search}
+                {t("product.searchTag", { query: search })}
               </span>
             ) : null}
           </div>
@@ -338,15 +344,15 @@ function ProductCatalogContent({
             <div className="theme-divider flex items-center justify-between border-b px-5 py-4">
               <div>
                 <p className="text-[11px] uppercase tracking-[0.35em] text-ink-muted">
-                  Filters
+                  {t("common.filters")}
                 </p>
-                <p className="text-lg font-semibold">Refine products</p>
+                <p className="text-lg font-semibold">{t("product.refine")}</p>
               </div>
               <Button
                 isIconOnly
                 variant="light"
                 radius="full"
-                aria-label="Close filters"
+                aria-label={t("product.closeFilters")}
                 className="theme-action-soft"
                 onPress={() => setIsFilterDrawerOpen(false)}
               >

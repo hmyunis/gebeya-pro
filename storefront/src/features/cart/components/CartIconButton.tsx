@@ -1,5 +1,6 @@
 import { Badge, Button } from "@heroui/react";
 import { useEffect, useState } from "react";
+import { useI18n } from "@/features/i18n";
 
 export function CartIconButton({
   count,
@@ -8,6 +9,7 @@ export function CartIconButton({
   count: number;
   onPress: () => void;
 }) {
+  const { t } = useI18n();
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -28,7 +30,7 @@ export function CartIconButton({
         isIconOnly
         variant="light"
         radius="full"
-        aria-label="Cart"
+        aria-label={t("cart.button")}
         onPress={onPress}
         className="theme-action-soft"
       >

@@ -6,8 +6,10 @@ import {
   $cartItems,
   type CartProduct,
 } from "../store/cartStore";
+import { useI18n } from "@/features/i18n";
 
 export default function AddToCart({ product }: { product: CartProduct }) {
+  const { t } = useI18n();
   const cartItems = useStore($cartItems);
   const quantity = cartItems[product.id]?.quantity ?? 0;
 
@@ -20,7 +22,7 @@ export default function AddToCart({ product }: { product: CartProduct }) {
             size="sm"
             radius="full"
             variant="flat"
-            aria-label="Decrease quantity"
+            aria-label={t("cart.decrease")}
             className="theme-action-soft"
             onPress={() => decrementFromCart(product.id)}
           >
@@ -34,7 +36,7 @@ export default function AddToCart({ product }: { product: CartProduct }) {
             size="sm"
             radius="full"
             variant="flat"
-            aria-label="Increase quantity"
+            aria-label={t("cart.increase")}
             className="theme-action-soft"
             onPress={() => addToCart(product)}
           >
@@ -51,13 +53,13 @@ export default function AddToCart({ product }: { product: CartProduct }) {
           onPress={() => {
             addToCart(product);
             addToast({
-              title: "Added to cart!",
+              title: t("cart.added"),
               color: "success",
               timeout: 2000,
             });
           }}
         >
-          Add
+          {t("common.add")}
         </Button>
       )}
     </div>

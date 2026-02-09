@@ -8,6 +8,7 @@ import {
   Skeleton,
 } from "@heroui/react";
 import { LayoutDashboard, LogOut } from "lucide-react";
+import { useI18n } from "@/features/i18n";
 
 export function UserMenu({
   isAuthenticated,
@@ -24,6 +25,8 @@ export function UserMenu({
   displayName: string;
   onAction: (key: Key) => void;
 }) {
+  const { t } = useI18n();
+
   if (isLoading) {
     return <Skeleton className="h-10 w-10 rounded-full" />;
   }
@@ -37,7 +40,7 @@ export function UserMenu({
         href="/login"
         className="theme-action-soft"
       >
-        Login
+        {t("common.login")}
       </Button>
     );
   }
@@ -47,13 +50,13 @@ export function UserMenu({
       <DropdownTrigger>
         <button
           type="button"
-          aria-label="User menu"
+          aria-label={t("navbar.userMenu")}
           className="theme-action-soft flex h-10 w-10 items-center justify-center overflow-hidden rounded-full transition"
         >
           {avatarSrc ? (
             <img
               src={avatarSrc}
-              alt={displayName || "User avatar"}
+              alt={displayName || t("navbar.userMenu")}
               className="h-full w-full object-cover"
             />
           ) : (
@@ -63,7 +66,7 @@ export function UserMenu({
       </DropdownTrigger>
 
       <DropdownMenu
-        aria-label="User menu"
+        aria-label={t("navbar.userMenu")}
         onAction={onAction}
         className="min-w-[180px]"
       >
@@ -71,14 +74,14 @@ export function UserMenu({
           key="dashboard"
           startContent={<LayoutDashboard size={16} />}
         >
-          Dashboard
+          {t("navbar.dashboard")}
         </DropdownItem>
         <DropdownItem
           key="logout"
           color="danger"
           startContent={<LogOut size={16} />}
         >
-          Logout
+          {t("common.logout")}
         </DropdownItem>
       </DropdownMenu>
     </Dropdown>

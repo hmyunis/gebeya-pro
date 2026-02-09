@@ -1,12 +1,17 @@
 import type { PriceRange } from "../types";
 
-const compactFormatter = new Intl.NumberFormat("en-US", {
-  notation: "compact",
-  maximumFractionDigits: 1,
-});
+function resolveLocaleTag() {
+  if (typeof document !== "undefined" && document.documentElement.lang) {
+    return document.documentElement.lang;
+  }
+  return "en-US";
+}
 
 export function formatCompactNumber(value: number): string {
-  return compactFormatter.format(value);
+  return new Intl.NumberFormat(resolveLocaleTag(), {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(value);
 }
 
 export function formatPriceRangeLabel(range: PriceRange): string {
@@ -16,4 +21,3 @@ export function formatPriceRangeLabel(range: PriceRange): string {
   }
   return `${formatCompactNumber(range.min)} - ${formatCompactNumber(range.max)}`;
 }
-

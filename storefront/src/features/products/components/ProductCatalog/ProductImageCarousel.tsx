@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useI18n } from "@/features/i18n";
 
 export function ProductImageCarousel({
   images,
@@ -8,6 +9,7 @@ export function ProductImageCarousel({
   images: string[];
   productName: string;
 }) {
+  const { t } = useI18n();
   const [activeIndex, setActiveIndex] = useState(0);
   const canSlide = images.length > 1;
 
@@ -35,7 +37,7 @@ export function ProductImageCarousel({
       <div className="theme-image-placeholder relative min-h-0 flex-1 overflow-hidden rounded-2xl">
         <img
           src={currentImage}
-          alt={`${productName} image ${activeIndex + 1}`}
+          alt={t("product.imageAlt", { name: productName, index: activeIndex + 1 })}
           className="h-full w-full object-cover"
         />
 
@@ -49,7 +51,7 @@ export function ProductImageCarousel({
                 )
               }
               className="theme-chip-contrast absolute left-3 top-1/2 -translate-y-1/2 rounded-full p-2 transition"
-              aria-label="Previous image"
+              aria-label={t("product.prevImage")}
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
@@ -59,7 +61,7 @@ export function ProductImageCarousel({
                 setActiveIndex((current) => (current + 1) % images.length)
               }
               className="theme-chip-contrast absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-2 transition"
-              aria-label="Next image"
+              aria-label={t("product.nextImage")}
             >
               <ChevronRight className="h-4 w-4" />
             </button>
@@ -79,11 +81,11 @@ export function ProductImageCarousel({
                 "relative h-14 w-14 shrink-0 overflow-hidden rounded-md border-2 transition",
                 index === activeIndex ? "border-primary" : "border-transparent",
               ].join(" ")}
-              aria-label={`Preview image ${index + 1}`}
+              aria-label={t("product.previewImage", { index: index + 1 })}
             >
               <img
                 src={image}
-                alt={`${productName} preview ${index + 1}`}
+                alt={t("product.previewAlt", { name: productName, index: index + 1 })}
                 className="h-full w-full object-cover"
               />
             </button>

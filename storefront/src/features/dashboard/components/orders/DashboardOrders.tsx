@@ -10,6 +10,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { API_BASE } from "@/config/env";
 import { api, getApiErrorMessage } from "@/lib/api";
+import { useI18n } from "@/features/i18n";
 
 import { DeleteOrderConfirmModal } from "./DeleteOrderConfirmModal";
 import { OrdersHeader } from "./OrdersHeader";
@@ -19,6 +20,7 @@ import { PAGE_SIZE, type OrdersResponse, type OrdersResponseApi, type OrderStatu
 import { sanitizeOrderSearch, useDebouncedValue } from "./utils";
 
 export default function DashboardOrders() {
+  const { t } = useI18n();
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<OrderStatus | "ALL">("ALL");
   const [search, setSearch] = useState("");
@@ -87,8 +89,8 @@ export default function DashboardOrders() {
     },
     onSuccess: (_, orderId) => {
       addToast({
-        title: "Order deleted",
-        description: "Your pending order was removed successfully.",
+        title: t("orders.toast.deleted"),
+        description: t("orders.toast.deletedDesc"),
         color: "success",
       });
       setDeleteCandidate(null);
@@ -113,7 +115,7 @@ export default function DashboardOrders() {
     },
     onError: (error) => {
       addToast({
-        title: "Could not delete order",
+        title: t("orders.toast.deleteFailed"),
         description: getApiErrorMessage(error),
         color: "danger",
       });

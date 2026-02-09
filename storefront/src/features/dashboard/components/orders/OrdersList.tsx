@@ -1,4 +1,5 @@
 import { Button, Skeleton } from "@heroui/react";
+import { useI18n } from "@/features/i18n";
 
 import { getApiErrorMessage } from "@/lib/api";
 
@@ -30,6 +31,8 @@ export function OrdersList({
     itemCount: number;
   }) => void;
 }) {
+  const { t } = useI18n();
+
   if (isInitialLoading) {
     return (
       <div className="space-y-3">
@@ -59,7 +62,7 @@ export function OrdersList({
   if (isInitialError) {
     return (
       <div className="rounded-3xl border border-rose-200 bg-rose-50 p-6 text-rose-900">
-        <p className="font-semibold">Could not load orders</p>
+        <p className="font-semibold">{t("ordersList.loadError")}</p>
         <p className="mt-1 text-sm text-rose-800">{getApiErrorMessage(error)}</p>
         <Button
           size="sm"
@@ -68,7 +71,7 @@ export function OrdersList({
           className="mt-4 border border-rose-200 bg-white/70 text-rose-900"
           onPress={onRetry}
         >
-          Retry
+          {t("common.retry")}
         </Button>
       </div>
     );
@@ -78,9 +81,9 @@ export function OrdersList({
     return (
       <div className="flex items-center justify-center rounded-3xl border border-dashed border-black/10 bg-white/70 p-10 text-center">
         <div>
-          <p className="font-display text-xl">No orders found</p>
+          <p className="font-display text-xl">{t("ordersList.empty")}</p>
           <p className="text-ink-muted mt-2 text-sm">
-            Try changing filters or place your first order.
+            {t("ordersList.emptyHint")}
           </p>
         </div>
       </div>
@@ -102,4 +105,3 @@ export function OrdersList({
     </div>
   );
 }
-

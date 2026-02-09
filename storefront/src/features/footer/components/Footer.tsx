@@ -9,21 +9,24 @@ import { GitHubIcon, TelegramIcon, TikTokIcon } from './SocialIcons';
 import QueryProvider from "@/app/QueryProvider";
 import { Lock } from 'lucide-react';
 import appLogo from "@/assets/logo.png";
+import { I18nProvider, useI18n } from "@/features/i18n";
 
 const appLogoSrc = typeof appLogo === "string" ? appLogo : appLogo.src;
 
 function Logo() {
+    const { t } = useI18n();
+
     return (
         <div className="flex items-center gap-3">
             <img
                 src={appLogoSrc}
-                alt="Gebeya Pro logo"
+                alt={t("brand.logoAlt")}
                 className="h-10 w-10 rounded-xl object-contain ring-1 ring-white/20"
             />
             <div className="flex flex-col leading-none">
                 <span className="text-lg font-semibold tracking-tight text-white">Gebeya Pro</span>
                 <span className="text-[10px] uppercase tracking-[0.3em] text-slate-400">
-                    Marketplace
+                    {t("common.marketplace")}
                 </span>
             </div>
         </div>
@@ -55,13 +58,16 @@ function SocialLink({
 
 export default function Footer() {
     return (
-        <QueryProvider>
-            <FooterContent />
-        </QueryProvider>
+        <I18nProvider>
+            <QueryProvider>
+                <FooterContent />
+            </QueryProvider>
+        </I18nProvider>
     );
 }
 
 function FooterContent() {
+    const { t } = useI18n();
     const year = new Date().getFullYear();
 
     return (
@@ -73,22 +79,17 @@ function FooterContent() {
                         <div className="space-y-4">
                             <Logo />
                             <p className="max-w-md text-sm leading-relaxed text-slate-400">
-                                Gebeya Pro is a modern, lightweight marketplace experience designed
-                                for fast browsing, clear product details, and a frictionless
-                                checkout. We keep the interface minimal and responsive so you can
-                                find what you need quickly, review your order confidently, and
-                                complete payment with straightforward bank instructions.
+                                {t("footer.about")}
                                 <br />
                                 <br />
-                                Have feedback, a question about an order, or a suggestion to improve
-                                the store? Send a short note using the form — we read every message.
+                                {t("footer.about2")}
                             </p>
                         </div>
 
                         <div className="space-y-4">
                             <div>
                                 <p className="mb-1 text-xs font-medium uppercase tracking-wider text-slate-500">
-                                    Contact
+                                    {t("common.contact")}
                                 </p>
                                 <a
                                     href={`mailto:${PUBLIC_CONTACT_EMAIL}`}
@@ -115,8 +116,8 @@ function FooterContent() {
                     {/* Right Column: Compact Form */}
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-2xl backdrop-blur-sm">
                         <div className="mb-3 flex items-center justify-between">
-                            <h3 className="text-sm font-semibold text-white">Quick Message</h3>
-                            <span className="text-[10px] text-slate-500"><Lock className='inline w-4 -mt-1' /> Secure Message</span>
+                            <h3 className="text-sm font-semibold text-white">{t("footer.quickMessage")}</h3>
+                            <span className="text-[10px] text-slate-500"><Lock className='inline w-4 -mt-1' /> {t("footer.secureMessage")}</span>
                         </div>
                         <ContactUsForm />
                     </div>
@@ -124,9 +125,9 @@ function FooterContent() {
 
                 {/* Footer Bottom */}
                 <div className="mt-8 flex flex-col items-center justify-between gap-3 border-t border-white/10 pt-6 text-xs text-slate-500 sm:flex-row">
-                    <p>© {year} Gebeya Pro. All rights reserved.</p>
+                    <p>{t("footer.copyright", { year })}</p>
                     <span>
-                        <span className="">Developed by</span>{' '}
+                        <span className="">{t("footer.developedBy")}</span>{' '}
                         <a
                             href="https://github.com/hmyunis"
                             target="_blank"

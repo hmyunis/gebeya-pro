@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 import { getCurrentPathWithQueryAndHash } from "@/lib/navigation";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { requireLogin } from "@/features/auth/store/authStore";
+import { useI18n } from "@/features/i18n";
 
 export default function RequireAuth({
   children,
@@ -13,6 +14,7 @@ export default function RequireAuth({
   children: ReactNode;
   fallback?: ReactNode;
 }) {
+  const { t } = useI18n();
   const { user, authReady } = useAuth();
   const hasRedirected = useRef(false);
   const toastKeyRef = useRef<string | null>(null);
@@ -32,8 +34,8 @@ export default function RequireAuth({
     if (!authReady) {
       if (toastKeyRef.current) return;
       const key = addToast({
-        title: "Checking your session…",
-        description: "Just a moment.",
+        title: t("requireAuth.checking"),
+        description: t("requireAuth.justMoment"),
         color: "default",
         timeout: 60_000,
       });
@@ -69,9 +71,9 @@ export default function RequireAuth({
   if (!user) {
     return (
       <div className="glass-strong rounded-3xl p-8 text-center">
-        <p className="font-display text-xl">Login required</p>
+        <p className="font-display text-xl">{t("requireAuth.loginRequired")}</p>
         <p className="text-ink-muted mt-1 text-sm">
-          Redirecting you to Telegram login...
+          {t("requireAuth.redirecting")}
         </p>
       </div>
     );

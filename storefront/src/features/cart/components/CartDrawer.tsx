@@ -7,6 +7,7 @@ import {
   decrementFromCart,
   type CartItem,
 } from "@/features/cart/store/cartStore";
+import { useI18n } from "@/features/i18n";
 
 export function CartDrawer({
   isOpen,
@@ -23,6 +24,8 @@ export function CartDrawer({
   imageBase: string;
   onCheckout: () => void;
 }) {
+  const { t } = useI18n();
+
   return (
     <div
       className={`fixed inset-0 z-50 ${isOpen ? "pointer-events-auto" : "pointer-events-none"}`}
@@ -39,15 +42,15 @@ export function CartDrawer({
         <div className="theme-divider flex items-center justify-between border-b px-5 py-4">
           <div>
             <p className="text-[11px] uppercase tracking-[0.35em] text-ink-muted">
-              Cart
+              {t("cart.cart")}
             </p>
-            <p className="text-lg font-semibold">Your items</p>
+            <p className="text-lg font-semibold">{t("cart.yourItems")}</p>
           </div>
           <Button
             isIconOnly
             variant="light"
             radius="full"
-            aria-label="Close cart"
+            aria-label={t("cart.close")}
             onPress={onClose}
           >
             ✕
@@ -58,9 +61,9 @@ export function CartDrawer({
           {items.length === 0 ? (
             <div className="flex flex-1 items-center justify-center text-center">
               <div>
-                <p className="font-display text-xl">Cart is empty</p>
+                <p className="font-display text-xl">{t("cart.empty")}</p>
                 <p className="text-sm text-ink-muted">
-                  Add a few products to get started.
+                  {t("cart.emptyHint")}
                 </p>
               </div>
             </div>
@@ -100,7 +103,7 @@ export function CartDrawer({
                         size="sm"
                         radius="full"
                         variant="flat"
-                        aria-label="Decrease quantity"
+                        aria-label={t("cart.decrease")}
                         className="theme-action-soft"
                         onPress={() => decrementFromCart(item.id)}
                       >
@@ -114,7 +117,7 @@ export function CartDrawer({
                         size="sm"
                         radius="full"
                         variant="flat"
-                        aria-label="Increase quantity"
+                        aria-label={t("cart.increase")}
                         className="theme-action-soft"
                         onPress={() =>
                           addToCart({
@@ -137,7 +140,7 @@ export function CartDrawer({
 
         <div className="theme-divider border-t px-5 py-4">
           <div className="flex items-center justify-between text-base font-semibold">
-            <span>Total</span>
+            <span>{t("common.total")}</span>
             <span className="whitespace-nowrap">{formatBirrLabel(total)}</span>
           </div>
           <Button
@@ -147,7 +150,7 @@ export function CartDrawer({
             isDisabled={items.length === 0}
             onPress={onCheckout}
           >
-            Checkout
+            {t("common.checkout")}
           </Button>
         </div>
       </div>

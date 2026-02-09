@@ -2,8 +2,11 @@ import { Button } from "@heroui/react";
 import { ArrowLeft } from "lucide-react";
 
 import DashboardTabs from "@/features/dashboard/components/DashboardTabs";
+import { useI18n } from "@/features/i18n";
 
 export default function DashboardPage() {
+  const { t } = useI18n();
+
   return (
     <section className="space-y-8">
       <header className="space-y-6 text-center">
@@ -16,17 +19,17 @@ export default function DashboardPage() {
             size="sm"
             startContent={<ArrowLeft size={16} />}
           >
-            Home
+            {t("common.home")}
           </Button>
         </div>
         <p className="text-[11px] uppercase tracking-[0.35em] text-ink-muted">
-          Your space
+          {t("dashboard.yourSpace")}
         </p>
         <h1 className="font-display mt-3 text-3xl leading-tight md:text-4xl">
-          Dashboard
+          {t("dashboard.title")}
         </h1>
         <p className="text-ink-muted mt-2 text-sm">
-          Track orders, manage details, and tailor your experience.
+          {t("dashboard.subtitle")}
         </p>
       </header>
 

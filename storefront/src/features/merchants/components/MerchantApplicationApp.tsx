@@ -14,6 +14,7 @@ import { useMutation } from "@tanstack/react-query";
 import Providers from "@/app/Providers";
 import { PUBLIC_TELEGRAM_BOT_NAME } from "@/config/env";
 import { api } from "@/lib/api";
+import { useI18n } from "@/features/i18n";
 
 type TelegramUser = {
   id: number;
@@ -31,15 +32,15 @@ declare global {
 }
 
 const ITEM_TYPE_OPTIONS = [
-  "Electronics",
-  "Fashion",
-  "Home & Living",
-  "Beauty",
-  "Groceries",
-  "Books",
-  "Kids",
-  "Other",
-];
+  { value: "Electronics", key: "merchant.item.electronics" },
+  { value: "Fashion", key: "merchant.item.fashion" },
+  { value: "Home & Living", key: "merchant.item.home" },
+  { value: "Beauty", key: "merchant.item.beauty" },
+  { value: "Groceries", key: "merchant.item.groceries" },
+  { value: "Books", key: "merchant.item.books" },
+  { value: "Kids", key: "merchant.item.kids" },
+  { value: "Other", key: "merchant.item.other" },
+] as const;
 
 export default function MerchantApplicationApp() {
   return (
@@ -50,6 +51,7 @@ export default function MerchantApplicationApp() {
 }
 
 function MerchantApplicationContent() {
+  const { t } = useI18n();
   const telegramRef = useRef<HTMLDivElement | null>(null);
   const [telegramAuth, setTelegramAuth] = useState<TelegramUser | null>(null);
   const [telegramStatus, setTelegramStatus] = useState<
@@ -78,8 +80,8 @@ function MerchantApplicationContent() {
     window.onTelegramMerchantApply = (user: TelegramUser) => {
       setTelegramAuth(user);
       addToast({
-        title: "Telegram linked",
-        description: "Your Telegram account is authorized for the application.",
+        title: t("merchant.linkedTelegram"),
+        description: t("merchant.linkedTelegramDesc"),
         color: "success",
       });
     };
@@ -122,7 +124,7 @@ function MerchantApplicationContent() {
       window.clearTimeout(timeout);
       container.innerHTML = "";
     };
-  }, [botConfigured, widgetAttempt]);
+  }, [botConfigured, t, widgetAttempt]);
 
   const canSubmit = useMemo(
     () =>
@@ -156,9 +158,8 @@ function MerchantApplicationContent() {
     },
     onSuccess: () => {
       addToast({
-        title: "Application submitted",
-        description:
-          "Your merchant application was received. We will notify you after review.",
+        title: t("merchant.applicationSubmitted"),
+        description: t("merchant.applicationSubmittedDesc"),
         color: "success",
       });
       setFullName("");
@@ -169,8 +170,8 @@ function MerchantApplicationContent() {
     },
     onError: (error: any) => {
       addToast({
-        title: "Submission failed",
-        description: error?.response?.data?.message || error.message || "Please try again.",
+        title: t("merchant.submissionFailed"),
+        description: error?.response?.data?.message || error.message || t("order.toast.tryAgain"),
         color: "danger",
       });
     },
@@ -181,20 +182,20 @@ function MerchantApplicationContent() {
       <CardBody className="space-y-6 p-6 md:p-8">
         <div>
           <p className="text-[11px] uppercase tracking-[0.35em] text-ink-muted">
-            Merchant Application
+            {t("merchant.application")}
           </p>
           <h1 className="font-display mt-2 text-3xl leading-tight">
-            Start selling on Gebeya Pro
+            {t("merchant.startSelling")}
           </h1>
           <p className="mt-2 text-sm text-ink-muted">
-            Submit your details, link Telegram, and we will review your request.
+            {t("merchant.intro")}
           </p>
         </div>
 
         <div className="theme-card-subtle rounded-2xl p-4">
-          <p className="text-sm font-semibold">1. Link Telegram</p>
+          <p className="text-sm font-semibold">{t("merchant.step1")}</p>
           <p className="mt-1 text-xs text-ink-muted">
-            Telegram authorization is required so we can verify your application and notify you.
+            {t("merchant.step1Hint")}
           </p>
           <div className="mt-3 flex flex-col gap-3">
             {telegramStatus === "loading" ? (
@@ -208,17 +209,17 @@ function MerchantApplicationContent() {
                 className="theme-action-soft"
                 onPress={() => setWidgetAttempt((value) => value + 1)}
               >
-                Retry Telegram Widget
+                {t("merchant.retryWidget")}
               </Button>
             ) : null}
             {telegramStatus === "disabled" ? (
               <p className="text-sm text-danger">
-                Telegram bot is not configured. Please contact support.
+                {t("merchant.botNotConfigured")}
               </p>
             ) : null}
             {telegramAuth ? (
               <Chip color="success" variant="flat">
-                Linked: {telegramAuth.first_name}
+                {t("merchant.linkedAs", { name: telegramAuth.first_name })}
                 {telegramAuth.username ? ` (@${telegramAuth.username})` : ""}
               </Chip>
             ) : null}
@@ -227,7 +228,7 @@ function MerchantApplicationContent() {
 
         <div className="grid gap-4 md:grid-cols-2">
           <Input
-            label="Full name"
+            label={t("merchant.fullName")}
             value={fullName}
             onValueChange={setFullName}
             isRequired
@@ -235,7 +236,7 @@ function MerchantApplicationContent() {
             classNames={{ inputWrapper: "theme-field" }}
           />
           <Input
-            label="Phone number"
+            label={t("merchant.phoneNumber")}
             value={phoneNumber}
             onValueChange={setPhoneNumber}
             isRequired
@@ -245,7 +246,7 @@ function MerchantApplicationContent() {
         </div>
 
         <Textarea
-          label="Address"
+          label={t("merchant.address")}
           value={address}
           onValueChange={setAddress}
           minRows={3}
@@ -255,29 +256,30 @@ function MerchantApplicationContent() {
         />
 
         <div>
-          <p className="text-sm font-semibold">2. Choose item types</p>
+          <p className="text-sm font-semibold">{t("merchant.step2")}</p>
           <p className="mt-1 text-xs text-ink-muted">
-            Select all categories you want to sell.
+            {t("merchant.step2Hint")}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             {ITEM_TYPE_OPTIONS.map((option) => {
-              const selected = itemTypes.includes(option);
+              const optionLabel = t(option.key);
+              const selected = itemTypes.includes(option.value);
               return (
                 <Button
-                  key={option}
+                  key={option.value}
                   size="sm"
                   variant={selected ? "solid" : "flat"}
                   color={selected ? "primary" : "default"}
                   className={selected ? "theme-cta" : "theme-action-soft"}
                   onPress={() =>
                     setItemTypes((prev) =>
-                      prev.includes(option)
-                        ? prev.filter((item) => item !== option)
-                        : [...prev, option],
+                      prev.includes(option.value)
+                        ? prev.filter((item) => item !== option.value)
+                        : [...prev, option.value],
                     )
                   }
                 >
-                  {option}
+                  {optionLabel}
                 </Button>
               );
             })}
@@ -286,7 +288,7 @@ function MerchantApplicationContent() {
 
         <Input
           type="file"
-          label="Profile picture (optional)"
+          label={t("merchant.profilePicture")}
           accept="image/*"
           variant="bordered"
           classNames={{ inputWrapper: "theme-field" }}
@@ -300,7 +302,7 @@ function MerchantApplicationContent() {
           isDisabled={!canSubmit}
           className="theme-cta w-full md:w-auto"
         >
-          Submit Application
+          {t("merchant.submit")}
         </Button>
       </CardBody>
     </Card>

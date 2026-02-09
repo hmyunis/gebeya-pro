@@ -27,6 +27,7 @@ import {
   type CartItem,
 } from "@/features/cart/store/cartStore";
 import { $user } from "@/features/auth/store/authStore";
+import { useI18n } from "@/features/i18n";
 
 type BankAccount = {
   id: number;
@@ -44,6 +45,7 @@ export default function OrderModal({
   isOpen: boolean;
   onClose: () => void;
 }) {
+  const { t } = useI18n();
   const cartItems = useStore($cartItems);
   const user = useStore($user);
 
@@ -158,15 +160,15 @@ export default function OrderModal({
       }
 
       addToast({
-        title: "Copied",
-        description: "Account number copied to clipboard.",
+        title: t("order.toast.copied.title"),
+        description: t("order.toast.copied.description"),
         color: "success",
       });
     } catch (error) {
       console.error("Copy failed", error);
       addToast({
-        title: "Copy failed",
-        description: "Could not copy account number. Please copy it manually.",
+        title: t("order.toast.copyFailed.title"),
+        description: t("order.toast.copyFailed.description"),
         color: "danger",
       });
     }
@@ -194,8 +196,8 @@ export default function OrderModal({
       await orderMutation.mutateAsync(formData);
 
       addToast({
-        title: "Order placed",
-        description: "We will confirm your order on Telegram.",
+        title: t("order.toast.placed.title"),
+        description: t("order.toast.placed.description"),
         color: "success",
       });
 
@@ -204,8 +206,8 @@ export default function OrderModal({
     } catch (error: any) {
       console.error("Order error:", error);
       addToast({
-        title: "Order failed",
-        description: error?.response?.data?.message || "Please try again.",
+        title: t("order.toast.failed.title"),
+        description: error?.response?.data?.message || t("order.toast.tryAgain"),
         color: "danger",
       });
     }
@@ -228,21 +230,21 @@ export default function OrderModal({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Finalize your order"
+        aria-label={t("order.dialog")}
         className="theme-panel absolute left-1/2 top-1/2 w-[calc(100%-2rem)] max-w-5xl -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-3xl shadow-2xl"
       >
         <div className="theme-divider flex items-center justify-between border-b px-5 py-4">
           <div>
             <p className="text-[11px] uppercase tracking-[0.35em] text-ink-muted">
-              Finalize
+              {t("order.finalize")}
             </p>
-            <p className="text-lg font-semibold">Review & confirm</p>
+            <p className="text-lg font-semibold">{t("order.review")}</p>
           </div>
           <Button
             isIconOnly
             variant="light"
             radius="full"
-            aria-label="Close order modal"
+            aria-label={t("order.close")}
             className="theme-action-soft"
             onPress={onClose}
           >
@@ -254,10 +256,10 @@ export default function OrderModal({
           <div className="glass-strong rounded-3xl p-5 md:p-6">
             <div className="flex items-center justify-between">
               <p className="text-[11px] uppercase tracking-[0.35em] text-ink-muted">
-                Your order
+                {t("order.yourOrder")}
               </p>
               <span className="theme-pill rounded-full px-3 py-1 text-[10px]">
-                {items.length} items
+                {t("common.items", { count: items.length })}
               </span>
             </div>
 
@@ -301,25 +303,25 @@ export default function OrderModal({
             </div>
 
             <div className="mt-5 flex items-center justify-between text-base font-semibold">
-              <span>Total</span>
+              <span>{t("common.total")}</span>
               <span className="text-[color:var(--ink)]">{formatBirrLabel(total)}</span>
             </div>
 
             <div className="mt-6">
               <div className="flex items-center justify-between">
                 <p className="text-[11px] uppercase tracking-[0.35em] text-ink-muted">
-                  Bank details
+                  {t("order.bankDetails")}
                 </p>
               </div>
 
               <div className="mt-3">
                 {isBankAccountsLoading ? (
                   <p className="text-xs text-ink-muted">
-                    Loading bank accounts...
+                    {t("order.loadingBanks")}
                   </p>
                 ) : activeBankAccounts.length === 0 ? (
                   <p className="text-xs text-ink-muted">
-                    No bank accounts available.
+                    {t("order.noBanks")}
                   </p>
                 ) : (
                   <ScrollShadow
@@ -359,7 +361,7 @@ export default function OrderModal({
                               {account.accountNumber}
                             </p>
                             <p className="text-[11px] text-ink-muted">
-                              Account number
+                              {t("order.accountNumber")}
                             </p>
                           </div>
                           <Button
@@ -368,7 +370,7 @@ export default function OrderModal({
                             size="sm"
                             radius="full"
                             variant="light"
-                            aria-label="Copy account number"
+                            aria-label={t("order.copyAccount")}
                             className="theme-action-soft"
                             onPress={() =>
                               copyToClipboard(account.accountNumber)
@@ -390,18 +392,18 @@ export default function OrderModal({
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
                   <p className="text-[11px] uppercase tracking-[0.35em] text-ink-muted">
-                    Delivery
+                    {t("common.delivery")}
                   </p>
                   <p className="mt-2 text-lg font-semibold">
-                    Where should we send it?
+                    {t("order.deliveryPrompt")}
                   </p>
                 </div>
 
                 <div className="space-y-4">
                   <Input
                     isRequired
-                    label="Full address"
-                    placeholder="e.g. Bole, Addis Ababa"
+                    label={t("order.fullAddress")}
+                    placeholder={t("order.addressPlaceholder")}
                     value={address}
                     onValueChange={(val) => {
                       if (val.length <= 30) setAddress(val);
@@ -417,10 +419,10 @@ export default function OrderModal({
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <p className="text-[11px] uppercase tracking-[0.35em] text-ink-muted">
-                        Receipt upload
+                        {t("order.receiptUpload")}
                       </p>
                       <span className="text-[11px] text-ink-muted">
-                        Required
+                        {t("common.required")}
                       </span>
                     </div>
 
@@ -438,7 +440,9 @@ export default function OrderModal({
                             {receiptFile.name}
                           </p>
                           <p className="text-[11px] text-ink-muted">
-                            {(receiptFile.size / (1024 * 1024)).toFixed(2)} MB
+                            {t("order.fileSizeMb", {
+                              size: (receiptFile.size / (1024 * 1024)).toFixed(2),
+                            })}
                           </p>
                           {receiptPreviewUrl ? (
                             <button
@@ -446,7 +450,7 @@ export default function OrderModal({
                               onClick={() => setIsReceiptPreviewOpen(true)}
                               className="mt-2 flex items-center gap-2 text-[11px] font-semibold text-ink-muted underline underline-offset-4 hover:text-[color:var(--ink)]"
                             >
-                              View preview
+                              {t("common.viewPreview")}
                             </button>
                           ) : null}
                         </div>
@@ -455,11 +459,11 @@ export default function OrderModal({
                             type="button"
                             onClick={() => setIsReceiptPreviewOpen(true)}
                             className="theme-card h-12 w-12 overflow-hidden rounded-xl"
-                            aria-label="Open receipt preview"
+                            aria-label={t("order.openReceiptPreview")}
                           >
                             <img
                               src={receiptPreviewUrl}
-                              alt="Receipt preview"
+                              alt={t("order.receiptPreview")}
                               className="h-full w-full object-cover"
                             />
                           </button>
@@ -471,12 +475,12 @@ export default function OrderModal({
                           className="theme-action-soft"
                           onPress={() => setReceiptFile(null)}
                         >
-                          Clear
+                          {t("common.clear")}
                         </Button>
                       </div>
                     ) : (
                       <p className="text-[11px] text-ink-muted">
-                        Any file type up to 25MB.
+                        {t("order.fileHint")}
                       </p>
                     )}
                   </div>
@@ -491,7 +495,7 @@ export default function OrderModal({
                   isDisabled={!canSubmit || orderMutation.isPending}
                   className="theme-cta"
                 >
-                  Confirm order
+                  {t("order.confirm")}
                 </Button>
               </form>
             </CardBody>
@@ -512,20 +516,20 @@ export default function OrderModal({
       >
         <ModalContent>
           <ModalHeader className="flex flex-col gap-1">
-            Receipt preview
+            {t("order.receiptPreview")}
           </ModalHeader>
           <ModalBody>
             {receiptPreviewUrl ? (
               <div className="theme-card max-h-[70vh] overflow-auto rounded-2xl p-3">
                 <img
                   src={receiptPreviewUrl}
-                  alt="Receipt preview"
+                  alt={t("order.receiptPreview")}
                   className="mx-auto h-auto max-h-[70vh] w-auto max-w-full"
                 />
               </div>
             ) : (
               <p className="text-sm text-ink-muted">
-                No image preview available.
+                {t("order.noPreview")}
               </p>
             )}
           </ModalBody>
@@ -534,7 +538,7 @@ export default function OrderModal({
               variant="light"
               onPress={() => setIsReceiptPreviewOpen(false)}
             >
-              Close
+              {t("common.close")}
             </Button>
           </ModalFooter>
         </ModalContent>

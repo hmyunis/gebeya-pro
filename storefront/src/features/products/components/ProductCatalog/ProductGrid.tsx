@@ -1,6 +1,7 @@
 import { Button } from "@heroui/react";
 
 import type { Product } from "@/features/products/types";
+import { useI18n } from "@/features/i18n";
 import { ProductCard } from "./ProductCard";
 
 export function ProductGrid({
@@ -18,10 +19,12 @@ export function ProductGrid({
   onRetry: () => void;
   onPreview: (product: Product) => void;
 }) {
+  const { t } = useI18n();
+
   if (error) {
     return (
       <div className="glass col-span-full rounded-3xl p-8 text-center">
-        <p className="font-display text-xl">We hit a snag</p>
+        <p className="font-display text-xl">{t("grid.snag")}</p>
         <p className="text-ink-muted mt-1 text-sm">{error}</p>
         <Button
           size="sm"
@@ -29,7 +32,7 @@ export function ProductGrid({
           className="theme-action-soft mt-4"
           onPress={onRetry}
         >
-          Retry
+          {t("common.retry")}
         </Button>
       </div>
     );
@@ -56,9 +59,9 @@ export function ProductGrid({
         ))
       ) : products.length === 0 ? (
         <div className="glass col-span-full rounded-3xl p-8 text-center">
-          <p className="font-display text-xl">No products found</p>
+          <p className="font-display text-xl">{t("grid.noProducts")}</p>
           <p className="text-ink-muted mt-1 text-sm">
-            Try adjusting your filters.
+            {t("grid.adjustFilters")}
           </p>
         </div>
       ) : (

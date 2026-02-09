@@ -12,6 +12,7 @@ import AddToCart from "@/features/cart/components/AddToCart";
 import type { Product } from "@/features/products/types";
 import { resolveImageUrl } from "@/lib/images";
 import { formatBirrLabel } from "@/lib/money";
+import { formatLocaleDate, useI18n } from "@/features/i18n";
 import { ProductImageCarousel } from "./ProductImageCarousel";
 
 export function ProductPreviewModal({
@@ -25,6 +26,7 @@ export function ProductPreviewModal({
   product: Product | null;
   imageBase: string;
 }) {
+  const { locale, t } = useI18n();
   const rawImagePaths =
     product?.imageUrls && product.imageUrls.length > 0
       ? product.imageUrls
@@ -43,22 +45,26 @@ export function ProductPreviewModal({
   const hasValidLastUpdatedDate =
     lastUpdatedDate !== null && !Number.isNaN(lastUpdatedDate.getTime());
   const lastUpdatedLabel = hasValidLastUpdatedDate
-    ? `Last updated ${lastUpdatedDate.toLocaleDateString(undefined, {
-        year: "numeric",
-        month: "short",
-        day: "2-digit",
-      })}`
-    : "Last updated recently";
+    ? t("product.lastUpdated", {
+        date: formatLocaleDate(lastUpdatedDate, locale, {
+          year: "numeric",
+          month: "short",
+          day: "2-digit",
+        }),
+      })
+    : t("product.lastUpdatedRecently");
   const descriptionText =
     product?.description && product.description.trim().length > 0
       ? product.description
-      : "No product description available yet.";
+      : t("product.noDescription");
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="3xl" scrollBehavior="inside">
       <ModalContent>
         <ModalHeader className="flex items-center justify-between gap-3">
-          <p className="text-base font-semibold md:text-lg">{product?.name ?? "Product Preview"}</p>
+          <p className="text-base font-semibold md:text-lg">
+            {product?.name ?? t("product.previewTitleFallback")}
+          </p>
         </ModalHeader>
         <ModalBody className="min-w-0 overflow-x-hidden pt-0">
             {product ? (
@@ -79,7 +85,7 @@ export function ProductPreviewModal({
                   </div>
                   {isFree ? (
                     <p className="text-2xl font-semibold uppercase tracking-[0.2em] text-green-600">
-                      FREE
+                      {t("product.free")}
                     </p>
                   ) : (
                     <p className="text-2xl font-semibold">{formatBirrLabel(product.price)}</p>
@@ -102,7 +108,7 @@ export function ProductPreviewModal({
         </ModalBody>
         <ModalFooter>
           <Button variant="light" onPress={onClose}>
-            Close
+            {t("common.close")}
           </Button>
         </ModalFooter>
       </ModalContent>

@@ -3,7 +3,7 @@ import type { Key } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useStore } from "@nanostores/react";
 import { useMutation } from "@tanstack/react-query";
-import { Store } from "lucide-react";
+import { MoonStar, Store, SunMedium } from "lucide-react";
 
 import { API_BASE } from "@/config/env";
 import { api, getApiErrorMessage } from "@/lib/api";
@@ -19,6 +19,12 @@ import OrderModal from "@/features/orders/components/OrderModal";
 import { CartIconButton } from "@/features/cart/components/CartIconButton";
 import { CartDrawer } from "@/features/cart/components/CartDrawer";
 import QueryProvider from "@/app/QueryProvider";
+import {
+  STOREFRONT_THEME_STORAGE_KEY,
+  applyStorefrontTheme,
+  resolveStorefrontTheme,
+  type StorefrontTheme,
+} from "@/features/theme/storefrontTheme";
 
 import { Brand } from "./Brand";
 import { UserMenu } from "./UserMenu";
@@ -40,6 +46,8 @@ function NavbarContentRoot({ showCartButton = true }: { showCartButton?: boolean
 
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isOrderOpen, setIsOrderOpen] = useState(false);
+  const [theme, setTheme] = useState<StorefrontTheme>("light");
+  const [themeReady, setThemeReady] = useState(false);
 
   const items = useMemo(() => Object.values(cartItems), [cartItems]);
   const total = useMemo(
@@ -66,6 +74,25 @@ function NavbarContentRoot({ showCartButton = true }: { showCartButton?: boolean
       void logout();
     },
   });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const initialTheme = resolveStorefrontTheme();
+    setTheme(initialTheme);
+    setThemeReady(true);
+    applyStorefrontTheme(initialTheme, { persist: false });
+
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== STOREFRONT_THEME_STORAGE_KEY) return;
+      const nextTheme = resolveStorefrontTheme();
+      setTheme(nextTheme);
+      applyStorefrontTheme(nextTheme, { persist: false });
+    };
+
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -139,15 +166,41 @@ function NavbarContentRoot({ showCartButton = true }: { showCartButton?: boolean
     }
   };
 
+  const toggleTheme = () => {
+    const nextTheme: StorefrontTheme = theme === "dark" ? "light" : "dark";
+    setTheme(nextTheme);
+    applyStorefrontTheme(nextTheme);
+  };
+
+  const isDarkTheme = themeReady && theme === "dark";
+  const themeToggleLabel = isDarkTheme
+    ? "Switch to light mode"
+    : "Switch to dark mode";
+
   return (
     <>
       <Navbar
         isBordered
-        className="fixed top-0 left-0 w-full border-b border-black/5 bg-white/70 backdrop-blur-xl shadow-[0_1px_0_rgba(16,19,25,0.08)]"
+        className="theme-nav fixed top-0 left-0 w-full backdrop-blur-xl"
       >
         <Brand />
 
         <NavbarContent justify="end" className="gap-1 sm:gap-2">
+          <Button
+            isIconOnly
+            variant="light"
+            radius="full"
+            aria-label={themeToggleLabel}
+            title={themeToggleLabel}
+            onPress={toggleTheme}
+            className="theme-action-soft"
+          >
+            {isDarkTheme ? (
+              <SunMedium className="h-4 w-4" />
+            ) : (
+              <MoonStar className="h-4 w-4" />
+            )}
+          </Button>
           {showBecomeMerchantCta ? (
             <>
               <Button
@@ -156,7 +209,7 @@ function NavbarContentRoot({ showCartButton = true }: { showCartButton?: boolean
                 size="sm"
                 isIconOnly
                 aria-label="Apply as merchant"
-                className="sm:hidden border border-black/10 bg-white/70 text-[#12141a] shadow-[0_12px_30px_-24px_rgba(16,19,25,0.7)]"
+                className="theme-action-soft sm:hidden"
               >
                 <Store className="h-4 w-4" />
               </Button>
@@ -165,7 +218,7 @@ function NavbarContentRoot({ showCartButton = true }: { showCartButton?: boolean
                 href="/merchant/apply"
                 size="sm"
                 variant="flat"
-                className="hidden sm:inline-flex border border-black/10 bg-white/70 text-[#12141a] shadow-[0_12px_30px_-24px_rgba(16,19,25,0.7)]"
+                className="theme-action-soft hidden sm:inline-flex"
               >
                 Become a Merchant
               </Button>

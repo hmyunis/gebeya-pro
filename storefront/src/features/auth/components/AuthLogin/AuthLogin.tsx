@@ -205,11 +205,11 @@ function AuthLoginContent({ apiBase, telegramBot }: AuthLoginProps) {
           </div>
         </div>
 
-        <div className="w-full bg-white p-6 md:w-7/12 md:p-10">
+        <div className="theme-form-shell w-full p-6 md:w-7/12 md:p-10">
           <CardBody className="overflow-visible p-0">
             <div className="mx-auto w-full max-w-md space-y-6">
               {sessionQuery.isPending ? (
-                <div className="rounded-2xl border border-black/5 bg-black/5 px-4 py-3 text-center text-xs text-ink-muted">
+                <div className="theme-card-subtle rounded-2xl px-4 py-3 text-center text-xs text-ink-muted">
                   Checking your session…
                 </div>
               ) : null}
@@ -228,8 +228,8 @@ function AuthLoginContent({ apiBase, telegramBot }: AuthLoginProps) {
                   setConfirmPassword("");
                 }}
                 classNames={{
-                  cursor: "bg-[#0f2a4d]",
-                  tabContent: "group-data-[selected=true]:text-[#0f2a4d]",
+                  cursor: "bg-[color:var(--accent)]",
+                  tabContent: "group-data-[selected=true]:text-[color:var(--accent)]",
                 }}
               >
                 <Tab key="login" title="Login" />
@@ -239,17 +239,18 @@ function AuthLoginContent({ apiBase, telegramBot }: AuthLoginProps) {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <Input
                   isRequired
-                  variant="faded"
+                  variant="bordered"
                   label="Username"
                   placeholder="e.g. abebe"
                   value={username}
                   onValueChange={setUsername}
                   isDisabled={isDisabled}
                   startContent={<UserIcon className="text-default-400" />}
+                  classNames={{ inputWrapper: "theme-field" }}
                 />
                 <Input
                   isRequired
-                  variant="faded"
+                  variant="bordered"
                   label="Password"
                   placeholder="••••••••"
                   type="password"
@@ -257,12 +258,13 @@ function AuthLoginContent({ apiBase, telegramBot }: AuthLoginProps) {
                   onValueChange={setPassword}
                   isDisabled={isDisabled}
                   startContent={<LockIcon className="text-default-400" />}
+                  classNames={{ inputWrapper: "theme-field" }}
                 />
 
                 {mode === "register" && (
                   <Input
                     isRequired
-                    variant="faded"
+                    variant="bordered"
                     label="Confirm password"
                     placeholder="••••••••"
                     type="password"
@@ -270,6 +272,7 @@ function AuthLoginContent({ apiBase, telegramBot }: AuthLoginProps) {
                     onValueChange={setConfirmPassword}
                     isDisabled={isDisabled}
                     startContent={<LockIcon className="text-default-400" />}
+                    classNames={{ inputWrapper: "theme-field" }}
                   />
                 )}
 
@@ -280,7 +283,7 @@ function AuthLoginContent({ apiBase, telegramBot }: AuthLoginProps) {
                   color="primary"
                   isLoading={authMutation.isPending}
                   isDisabled={!canSubmit || isDisabled}
-                  className="mt-2 bg-[#12141a] font-medium text-white shadow-lg shadow-black/20"
+                  className="theme-cta mt-2 font-medium"
                 >
                   {submitLabel}
                 </Button>
@@ -294,7 +297,7 @@ function AuthLoginContent({ apiBase, telegramBot }: AuthLoginProps) {
                 <Divider className="flex-1" />
               </div>
 
-              <div className="rounded-2xl border border-default-100 bg-default-50/50 p-4 text-center">
+              <div className="theme-card-subtle rounded-2xl p-4 text-center">
                 <div className="flex items-center justify-center gap-2 text-sm font-semibold text-default-700">
                   <TelegramIcon className="text-[#229ED9]" />
                   <span>Telegram</span>
@@ -322,7 +325,7 @@ function AuthLoginContent({ apiBase, telegramBot }: AuthLoginProps) {
                       <Button
                         size="sm"
                         variant="flat"
-                        className="border border-black/10 bg-white/80"
+                        className="theme-action-soft"
                         onPress={retryTelegramWidget}
                       >
                         Retry

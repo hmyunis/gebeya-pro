@@ -75,6 +75,29 @@ const websiteJsonLd = JSON.stringify({
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
+    <script is:inline>
+      (() => {
+        const storageKey = "gebeya-storefront-theme";
+        const light = "light";
+        const dark = "dark";
+
+        try {
+          const stored = localStorage.getItem(storageKey);
+          const theme =
+            stored === light || stored === dark
+              ? stored
+              : window.matchMedia("(prefers-color-scheme: dark)").matches
+                ? dark
+                : light;
+
+          const root = document.documentElement;
+          root.dataset.theme = theme;
+          root.classList.toggle("dark", theme === dark);
+        } catch {
+          document.documentElement.dataset.theme = light;
+        }
+      })();
+    </script>
     <title>{pageTitle}</title>
 
     <meta name="description" content={description} />
@@ -83,6 +106,18 @@ const websiteJsonLd = JSON.stringify({
     <meta name="robots" content={robotsContent} />
     <meta name="application-name" content={PUBLIC_SITE_NAME} />
     <meta name="theme-color" content="#0b1427" />
+    <script is:inline>
+      (() => {
+        const root = document.documentElement;
+        const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+        if (!metaThemeColor) return;
+        const nextColor =
+          root.dataset.theme === "dark" || root.classList.contains("dark")
+            ? "#101c32"
+            : "#0b1427";
+        metaThemeColor.setAttribute("content", nextColor);
+      })();
+    </script>
     <meta name="format-detection" content="telephone=no, address=no, email=no" />
 
     <link rel="canonical" href={canonicalUrl} />
@@ -125,8 +160,8 @@ const websiteJsonLd = JSON.stringify({
   </head>
   <body>
     <div class="pointer-events-none fixed inset-0 -z-10">
-      <div class="absolute -top-32 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(15,42,77,0.18)_0%,rgba(15,42,77,0)_70%)] blur-2xl"></div>
-      <div class="absolute bottom-10 -right-30 h-80 w-80 rounded-full bg-[radial-gradient(circle,rgba(30,27,75,0.2)_0%,rgba(30,27,75,0)_70%)] blur-3xl"></div>
+      <div class="theme-orb theme-orb-a"></div>
+      <div class="theme-orb theme-orb-b"></div>
     </div>
     <Toasts client:load />
     <AuthBootstrap client:load />

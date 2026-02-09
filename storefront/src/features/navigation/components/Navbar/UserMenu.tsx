@@ -35,7 +35,7 @@ export function UserMenu({
         variant="flat"
         as="a"
         href="/login"
-        className="border border-black/10 bg-white/70 text-[#12141a] shadow-[0_12px_30px_-24px_rgba(16,19,25,0.7)]"
+        className="theme-action-soft"
       >
         Login
       </Button>
@@ -48,7 +48,7 @@ export function UserMenu({
         <button
           type="button"
           aria-label="User menu"
-          className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-black/10 bg-white/70 text-[#12141a] shadow-[0_12px_30px_-24px_rgba(16,19,25,0.7)] transition hover:shadow-[0_12px_30px_-18px_rgba(16,19,25,0.6)]"
+          className="theme-action-soft flex h-10 w-10 items-center justify-center overflow-hidden rounded-full transition"
         >
           {avatarSrc ? (
             <img

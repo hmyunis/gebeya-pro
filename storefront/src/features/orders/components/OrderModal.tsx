@@ -223,15 +223,15 @@ export default function OrderModal({
 
   return (
     <div className="fixed inset-0 z-60">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      <div className="theme-overlay absolute inset-0 backdrop-blur-sm" />
 
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Finalize your order"
-        className="absolute left-1/2 top-1/2 w-[calc(100%-2rem)] max-w-5xl -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-3xl border border-black/10 bg-white/95 shadow-2xl"
+        className="theme-panel absolute left-1/2 top-1/2 w-[calc(100%-2rem)] max-w-5xl -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-3xl shadow-2xl"
       >
-        <div className="flex items-center justify-between border-b border-black/5 px-5 py-4">
+        <div className="theme-divider flex items-center justify-between border-b px-5 py-4">
           <div>
             <p className="text-[11px] uppercase tracking-[0.35em] text-ink-muted">
               Finalize
@@ -243,6 +243,7 @@ export default function OrderModal({
             variant="light"
             radius="full"
             aria-label="Close order modal"
+            className="theme-action-soft"
             onPress={onClose}
           >
             ✕
@@ -255,7 +256,7 @@ export default function OrderModal({
               <p className="text-[11px] uppercase tracking-[0.35em] text-ink-muted">
                 Your order
               </p>
-              <span className="rounded-full border border-black/10 bg-white/80 px-3 py-1 text-[10px] text-ink-muted">
+              <span className="theme-pill rounded-full px-3 py-1 text-[10px]">
                 {items.length} items
               </span>
             </div>
@@ -267,9 +268,9 @@ export default function OrderModal({
                 return (
                   <div
                     key={item.id}
-                    className="flex items-start gap-3 rounded-2xl border border-black/5 bg-white/60 px-3 py-3"
+                    className="theme-card-subtle flex items-start gap-3 rounded-2xl px-3 py-3"
                   >
-                    <div className="h-14 w-14 overflow-hidden rounded-2xl border border-black/5 bg-white">
+                    <div className="theme-card h-14 w-14 overflow-hidden rounded-2xl">
                       {image ? (
                         <img
                           src={image}
@@ -301,7 +302,7 @@ export default function OrderModal({
 
             <div className="mt-5 flex items-center justify-between text-base font-semibold">
               <span>Total</span>
-              <span className="text-[#12141a]">{formatBirrLabel(total)}</span>
+              <span className="text-[color:var(--ink)]">{formatBirrLabel(total)}</span>
             </div>
 
             <div className="mt-6">
@@ -331,10 +332,10 @@ export default function OrderModal({
                     {activeBankAccounts.map((account) => (
                       <div
                         key={account.id}
-                        className="rounded-2xl border border-black/10 bg-white/80 px-4 py-3"
+                        className="theme-card rounded-2xl px-4 py-3"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 overflow-hidden rounded-lg border border-black/10 bg-white">
+                          <div className="theme-card-subtle h-10 w-10 overflow-hidden rounded-lg">
                             {account.logoUrl ? (
                               <img
                                 src={account.logoUrl}
@@ -344,7 +345,7 @@ export default function OrderModal({
                             ) : null}
                           </div>
                           <div className="flex-1">
-                            <p className="text-sm font-semibold text-[#12141a]">
+                            <p className="text-sm font-semibold text-[color:var(--ink)]">
                               {account.bankName}
                             </p>
                             <p className="text-[11px] text-ink-muted">
@@ -354,7 +355,7 @@ export default function OrderModal({
                         </div>
                         <div className="mt-2 flex items-start justify-between gap-3">
                           <div>
-                            <p className="text-sm font-semibold text-[#12141a]">
+                            <p className="text-sm font-semibold text-[color:var(--ink)]">
                               {account.accountNumber}
                             </p>
                             <p className="text-[11px] text-ink-muted">
@@ -368,6 +369,7 @@ export default function OrderModal({
                             radius="full"
                             variant="light"
                             aria-label="Copy account number"
+                            className="theme-action-soft"
                             onPress={() =>
                               copyToClipboard(account.accountNumber)
                             }
@@ -407,6 +409,9 @@ export default function OrderModal({
                     isDisabled={orderMutation.isPending}
                     variant="bordered"
                     maxLength={30}
+                    classNames={{
+                      inputWrapper: "theme-field",
+                    }}
                   />
 
                   <div className="space-y-2">
@@ -423,13 +428,13 @@ export default function OrderModal({
                       type="file"
                       onChange={(e) => setReceiptFromFileList(e.target.files)}
                       disabled={orderMutation.isPending}
-                      className="w-full rounded-2xl border border-black/10 bg-white/80 px-4 py-3 text-sm text-[#12141a] file:mr-3 file:rounded-full file:border-0 file:bg-black/5 file:px-3 file:py-1 file:text-xs file:font-semibold file:text-[#12141a]"
+                      className="theme-file-input w-full rounded-2xl px-4 py-3 text-sm"
                     />
 
                     {receiptFile ? (
-                      <div className="flex items-center justify-between gap-3 rounded-2xl border border-black/5 bg-white/70 px-4 py-2">
+                      <div className="theme-card-subtle flex items-center justify-between gap-3 rounded-2xl px-4 py-2">
                         <div className="min-w-0">
-                          <p className="text-sm font-semibold text-[#12141a] line-clamp-1">
+                          <p className="text-sm font-semibold text-[color:var(--ink)] line-clamp-1">
                             {receiptFile.name}
                           </p>
                           <p className="text-[11px] text-ink-muted">
@@ -439,7 +444,7 @@ export default function OrderModal({
                             <button
                               type="button"
                               onClick={() => setIsReceiptPreviewOpen(true)}
-                              className="mt-2 flex items-center gap-2 text-[11px] font-semibold text-ink-muted underline underline-offset-4 hover:text-[#12141a]"
+                              className="mt-2 flex items-center gap-2 text-[11px] font-semibold text-ink-muted underline underline-offset-4 hover:text-[color:var(--ink)]"
                             >
                               View preview
                             </button>
@@ -449,7 +454,7 @@ export default function OrderModal({
                           <button
                             type="button"
                             onClick={() => setIsReceiptPreviewOpen(true)}
-                            className="h-12 w-12 overflow-hidden rounded-xl border border-black/10 bg-white"
+                            className="theme-card h-12 w-12 overflow-hidden rounded-xl"
                             aria-label="Open receipt preview"
                           >
                             <img
@@ -463,6 +468,7 @@ export default function OrderModal({
                           type="button"
                           size="sm"
                           variant="flat"
+                          className="theme-action-soft"
                           onPress={() => setReceiptFile(null)}
                         >
                           Clear
@@ -483,7 +489,7 @@ export default function OrderModal({
                   size="lg"
                   isLoading={orderMutation.isPending}
                   isDisabled={!canSubmit || orderMutation.isPending}
-                  className="bg-[#12141a] text-white"
+                  className="theme-cta"
                 >
                   Confirm order
                 </Button>
@@ -510,7 +516,7 @@ export default function OrderModal({
           </ModalHeader>
           <ModalBody>
             {receiptPreviewUrl ? (
-              <div className="max-h-[70vh] overflow-auto rounded-2xl border border-black/10 bg-white p-3">
+              <div className="theme-card max-h-[70vh] overflow-auto rounded-2xl p-3">
                 <img
                   src={receiptPreviewUrl}
                   alt="Receipt preview"

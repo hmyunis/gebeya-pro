@@ -26,7 +26,7 @@ export function ProductGrid({
         <Button
           size="sm"
           variant="flat"
-          className="mt-4 border border-black/10 bg-white/80"
+          className="theme-action-soft mt-4"
           onPress={onRetry}
         >
           Retry
@@ -36,21 +36,21 @@ export function ProductGrid({
   }
 
   return (
-    <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
       {isLoading ? (
         Array.from({ length: 8 }).map((_, idx) => (
           <div
             key={`product-skeleton-${idx}`}
             className="glass-strong relative flex h-full flex-col overflow-hidden rounded-2xl"
           >
-            <div className="relative aspect-4/5 overflow-hidden bg-black/10 animate-pulse" />
+            <div className="theme-skeleton relative aspect-4/3 overflow-hidden animate-pulse" />
             <div className="flex flex-1 flex-col gap-3 p-4">
-              <div className="h-4 w-3/4 rounded-full bg-black/10 animate-pulse" />
+              <div className="theme-skeleton h-4 w-3/4 rounded-full animate-pulse" />
               <div className="mt-auto flex items-center justify-between">
-                <div className="h-4 w-16 rounded-full bg-black/10 animate-pulse" />
-                <div className="h-3 w-10 rounded-full bg-black/10 animate-pulse" />
+                <div className="theme-skeleton h-4 w-16 rounded-full animate-pulse" />
+                <div className="theme-skeleton h-3 w-10 rounded-full animate-pulse" />
               </div>
-              <div className="h-9 rounded-full bg-black/10 animate-pulse" />
+              <div className="theme-skeleton h-9 rounded-full animate-pulse" />
             </div>
           </div>
         ))

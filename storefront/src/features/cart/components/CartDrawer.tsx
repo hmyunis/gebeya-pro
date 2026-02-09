@@ -29,14 +29,14 @@ export function CartDrawer({
       aria-hidden={!isOpen}
     >
       <div
-        className={`absolute inset-0 bg-black/35 transition-opacity ${isOpen ? "opacity-100" : "opacity-0"}`}
+        className={`theme-overlay absolute inset-0 transition-opacity ${isOpen ? "opacity-100" : "opacity-0"}`}
         onClick={onClose}
       ></div>
 
       <div
-        className={`absolute right-0 top-0 h-full w-[90%] max-w-sm transform overflow-hidden bg-white/95 shadow-2xl backdrop-blur-xl transition-transform ${isOpen ? "translate-x-0" : "translate-x-full"}`}
+        className={`theme-drawer absolute right-0 top-0 h-full w-[90%] max-w-sm transform overflow-hidden shadow-2xl backdrop-blur-xl transition-transform ${isOpen ? "translate-x-0" : "translate-x-full"}`}
       >
-        <div className="flex items-center justify-between border-b border-black/5 px-5 py-4">
+        <div className="theme-divider flex items-center justify-between border-b px-5 py-4">
           <div>
             <p className="text-[11px] uppercase tracking-[0.35em] text-ink-muted">
               Cart
@@ -71,9 +71,9 @@ export function CartDrawer({
               return (
                 <div
                   key={item.id}
-                  className="flex items-center gap-3 rounded-2xl border border-black/5 bg-white/80 p-3 shadow-[0_12px_30px_-24px_rgba(16,19,25,0.4)]"
+                  className="theme-card flex items-center gap-3 rounded-2xl p-3 shadow-[var(--shadow-soft)]"
                 >
-                  <div className="h-14 w-14 overflow-hidden rounded-xl border border-black/5 bg-white">
+                  <div className="theme-card-subtle h-14 w-14 overflow-hidden rounded-xl">
                     {image ? (
                       <img
                         src={image}
@@ -101,7 +101,7 @@ export function CartDrawer({
                         radius="full"
                         variant="flat"
                         aria-label="Decrease quantity"
-                        className="border border-black/10 bg-white/80 text-[#12141a]"
+                        className="theme-action-soft"
                         onPress={() => decrementFromCart(item.id)}
                       >
                         −
@@ -115,7 +115,7 @@ export function CartDrawer({
                         radius="full"
                         variant="flat"
                         aria-label="Increase quantity"
-                        className="border border-black/10 bg-white/80 text-[#12141a]"
+                        className="theme-action-soft"
                         onPress={() =>
                           addToCart({
                             id: item.id,
@@ -135,7 +135,7 @@ export function CartDrawer({
           )}
         </div>
 
-        <div className="border-t border-black/5 px-5 py-4">
+        <div className="theme-divider border-t px-5 py-4">
           <div className="flex items-center justify-between text-base font-semibold">
             <span>Total</span>
             <span className="whitespace-nowrap">{formatBirrLabel(total)}</span>
@@ -143,7 +143,7 @@ export function CartDrawer({
           <Button
             fullWidth
             size="lg"
-            className="mt-4 bg-[#12141a] text-white"
+            className="theme-cta mt-4"
             isDisabled={items.length === 0}
             onPress={onCheckout}
           >

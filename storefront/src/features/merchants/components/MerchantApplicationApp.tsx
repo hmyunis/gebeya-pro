@@ -177,7 +177,7 @@ function MerchantApplicationContent() {
   });
 
   return (
-    <Card className="mx-auto max-w-3xl border border-black/10 bg-white/80 shadow-[0_20px_50px_-30px_rgba(16,19,25,0.6)]">
+    <Card className="theme-form-shell mx-auto max-w-3xl">
       <CardBody className="space-y-6 p-6 md:p-8">
         <div>
           <p className="text-[11px] uppercase tracking-[0.35em] text-ink-muted">
@@ -191,7 +191,7 @@ function MerchantApplicationContent() {
           </p>
         </div>
 
-        <div className="rounded-2xl border border-black/10 bg-white/70 p-4">
+        <div className="theme-card-subtle rounded-2xl p-4">
           <p className="text-sm font-semibold">1. Link Telegram</p>
           <p className="mt-1 text-xs text-ink-muted">
             Telegram authorization is required so we can verify your application and notify you.
@@ -205,6 +205,7 @@ function MerchantApplicationContent() {
               <Button
                 size="sm"
                 variant="flat"
+                className="theme-action-soft"
                 onPress={() => setWidgetAttempt((value) => value + 1)}
               >
                 Retry Telegram Widget
@@ -230,12 +231,16 @@ function MerchantApplicationContent() {
             value={fullName}
             onValueChange={setFullName}
             isRequired
+            variant="bordered"
+            classNames={{ inputWrapper: "theme-field" }}
           />
           <Input
             label="Phone number"
             value={phoneNumber}
             onValueChange={setPhoneNumber}
             isRequired
+            variant="bordered"
+            classNames={{ inputWrapper: "theme-field" }}
           />
         </div>
 
@@ -245,6 +250,8 @@ function MerchantApplicationContent() {
           onValueChange={setAddress}
           minRows={3}
           isRequired
+          variant="bordered"
+          classNames={{ inputWrapper: "theme-field" }}
         />
 
         <div>
@@ -261,6 +268,7 @@ function MerchantApplicationContent() {
                   size="sm"
                   variant={selected ? "solid" : "flat"}
                   color={selected ? "primary" : "default"}
+                  className={selected ? "theme-cta" : "theme-action-soft"}
                   onPress={() =>
                     setItemTypes((prev) =>
                       prev.includes(option)
@@ -280,6 +288,8 @@ function MerchantApplicationContent() {
           type="file"
           label="Profile picture (optional)"
           accept="image/*"
+          variant="bordered"
+          classNames={{ inputWrapper: "theme-field" }}
           onChange={(event) => setProfilePicture(event.target.files?.[0] ?? null)}
         />
 
@@ -288,7 +298,7 @@ function MerchantApplicationContent() {
           onPress={() => mutation.mutate()}
           isLoading={mutation.isPending}
           isDisabled={!canSubmit}
-          className="w-full md:w-auto"
+          className="theme-cta w-full md:w-auto"
         >
           Submit Application
         </Button>

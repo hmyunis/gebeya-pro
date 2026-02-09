@@ -34,23 +34,23 @@ export function ProductCard({
         }
       }}
     >
-      <div className="relative aspect-4/5 overflow-hidden text-left">
+      <div className="theme-image-placeholder relative aspect-4/3 overflow-hidden p-1 text-left">
         {image ? (
           <img
             src={image}
             alt={product.name}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+            className="h-full w-full rounded-xl object-fill"
           />
         ) : (
-          <div className="h-full w-full bg-black/10" />
+          <div className="theme-image-placeholder h-full w-full" />
         )}
 
         {product.category?.name ? (
-          <span className="absolute left-3 top-3 rounded-full bg-white/80 px-2.5 py-1 text-[10px] uppercase tracking-[0.3em] text-[#12141a]">
+          <span className="theme-chip absolute left-3 top-3 rounded-full px-2.5 py-1 text-[10px] uppercase tracking-[0.3em]">
             {product.category.name}
           </span>
         ) : null}
-        <span className="absolute bottom-3 right-3 rounded-full bg-black/55 px-2.5 py-1 text-[10px] uppercase tracking-[0.2em] text-white">
+        <span className="theme-chip-contrast absolute bottom-3 right-3 rounded-full px-2.5 py-1 text-[10px] uppercase tracking-[0.2em]">
           Preview
         </span>
       </div>
@@ -65,7 +65,7 @@ export function ProductCard({
               FREE
             </p>
           ) : (
-            <p className="text-sm font-semibold text-[#12141a] md:text-base">
+            <p className="text-sm font-semibold text-[color:var(--ink)] md:text-base">
               {formatBirrLabel(product.price)}
             </p>
           )}

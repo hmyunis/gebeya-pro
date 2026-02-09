@@ -27,12 +27,12 @@ export function ProductImageCarousel({
   const currentImage = useMemo(() => images[activeIndex] ?? null, [activeIndex, images]);
 
   if (!currentImage) {
-    return <div className="h-full w-full rounded-2xl bg-black/10" />;
+    return <div className="theme-image-placeholder h-full w-full rounded-2xl" />;
   }
 
   return (
     <div className="flex h-full w-full min-w-0 max-w-full flex-col gap-2 overflow-x-hidden">
-      <div className="relative min-h-0 flex-1 overflow-hidden rounded-2xl bg-black/5">
+      <div className="theme-image-placeholder relative min-h-0 flex-1 overflow-hidden rounded-2xl">
         <img
           src={currentImage}
           alt={`${productName} image ${activeIndex + 1}`}
@@ -48,7 +48,7 @@ export function ProductImageCarousel({
                   current === 0 ? images.length - 1 : current - 1,
                 )
               }
-              className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-black/45 p-2 text-white transition hover:bg-black/60"
+              className="theme-chip-contrast absolute left-3 top-1/2 -translate-y-1/2 rounded-full p-2 transition"
               aria-label="Previous image"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -58,7 +58,7 @@ export function ProductImageCarousel({
               onClick={() =>
                 setActiveIndex((current) => (current + 1) % images.length)
               }
-              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-black/45 p-2 text-white transition hover:bg-black/60"
+              className="theme-chip-contrast absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-2 transition"
               aria-label="Next image"
             >
               <ChevronRight className="h-4 w-4" />

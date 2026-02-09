@@ -14,6 +14,7 @@ export function ProductFilters({
   error,
   onReset,
   onRetry,
+  className,
 }: {
   categories: Category[];
   priceRanges: PriceRange[];
@@ -25,9 +26,12 @@ export function ProductFilters({
   error: string | null;
   onReset: () => void;
   onRetry: () => void;
+  className?: string;
 }) {
   return (
-    <aside className="glass-strong rounded-3xl p-4 md:p-5 text-xs">
+    <aside
+      className={`glass-strong rounded-3xl p-4 md:p-5 text-xs ${className ?? ""}`}
+    >
       <div className="flex items-center justify-between">
         <p className="text-[10px] uppercase tracking-[0.35em] text-ink-muted">
           Filters
@@ -35,7 +39,7 @@ export function ProductFilters({
         <Button
           size="sm"
           variant="flat"
-          className="border border-black/10 bg-white/80"
+          className="theme-action-soft"
           onPress={onReset}
         >
           Reset
@@ -50,7 +54,7 @@ export function ProductFilters({
               {Array.from({ length: 4 }).map((_, idx) => (
                 <div
                   key={`cat-skeleton-${idx}`}
-                  className="h-4 w-28 animate-pulse rounded-full bg-black/10"
+                  className="theme-skeleton h-4 w-28 animate-pulse rounded-full"
                 />
               ))}
             </div>
@@ -60,7 +64,7 @@ export function ProductFilters({
               <Button
                 size="sm"
                 variant="flat"
-                className="mt-2 border border-rose-200 bg-white"
+                className="mt-2 border border-rose-200 bg-rose-50"
                 onPress={onRetry}
               >
                 Retry
@@ -88,7 +92,7 @@ export function ProductFilters({
               {Array.from({ length: 5 }).map((_, idx) => (
                 <div
                   key={`price-skeleton-${idx}`}
-                  className="h-4 w-32 animate-pulse rounded-full bg-black/10"
+                  className="theme-skeleton h-4 w-32 animate-pulse rounded-full"
                 />
               ))}
             </div>

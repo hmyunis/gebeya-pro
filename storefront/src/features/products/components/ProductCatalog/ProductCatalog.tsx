@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Input, addToast } from "@heroui/react";
+import { Button, Input, addToast } from "@heroui/react";
 import { useStore } from "@nanostores/react";
+import { SlidersHorizontal } from "lucide-react";
 
 import { stripTrailingSlash } from "@/lib/url";
 import { useProducts } from "@/features/products/hooks/useProducts";
@@ -52,9 +53,35 @@ function ProductCatalogContent({
   const { user, authReady } = useAuth();
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isOrderOpen, setIsOrderOpen] = useState(false);
+  const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
+  const [isCompactFiltersViewport, setIsCompactFiltersViewport] =
+    useState(false);
   const cartButtonAnchorRef = useRef<HTMLDivElement | null>(null);
   const [isCartButtonAnchorVisible, setIsCartButtonAnchorVisible] =
     useState(true);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const mediaQuery = window.matchMedia("(max-width: 768px)");
+    const syncViewport = () => setIsCompactFiltersViewport(mediaQuery.matches);
+
+    syncViewport();
+
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", syncViewport);
+      return () => mediaQuery.removeEventListener("change", syncViewport);
+    }
+
+    mediaQuery.addListener(syncViewport);
+    return () => mediaQuery.removeListener(syncViewport);
+  }, []);
+
+  useEffect(() => {
+    if (!isCompactFiltersViewport) {
+      setIsFilterDrawerOpen(false);
+    }
+  }, [isCompactFiltersViewport]);
 
   const openOrderModal = () => {
     setIsCartOpen(false);
@@ -206,7 +233,7 @@ function ProductCatalogContent({
     <section id="collection" className="mt-10">
       <div className="flex flex-col items-center gap-4">
         <div className="text-center">
-          <p className="text-[11px] uppercase tracking-[0.35em] text-[#1e1b4b]">
+          <p className="text-[11px] uppercase tracking-[0.35em] text-[color:var(--accent-2)]">
             Browse products
           </p>
           <h2 className="font-display mt-2 text-2xl md:text-3xl">
@@ -214,6 +241,18 @@ function ProductCatalogContent({
           </h2>
         </div>
         <div className="flex w-full max-w-2xl items-center gap-2">
+          {isCompactFiltersViewport ? (
+            <Button
+              isIconOnly
+              variant="flat"
+              radius="full"
+              aria-label="Open filters"
+              className="theme-action-soft shrink-0"
+              onPress={() => setIsFilterDrawerOpen(true)}
+            >
+              <SlidersHorizontal size={18} />
+            </Button>
+          ) : null}
           <div className="min-w-0 flex-1">
             <Input
               size="md"
@@ -223,8 +262,7 @@ function ProductCatalogContent({
               variant="bordered"
               radius="full"
               classNames={{
-                inputWrapper:
-                  "bg-white/80 shadow-[0_16px_40px_-28px_rgba(18,20,26,0.55)]",
+                inputWrapper: "theme-field shadow-[var(--shadow-soft)]",
               }}
             />
           </div>
@@ -246,26 +284,28 @@ function ProductCatalogContent({
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
-        <ProductFilters
-          categories={categories}
-          priceRanges={priceRanges}
-          activeCategories={activeCategories}
-          onToggleCategory={handleToggleCategory}
-          priceBucket={priceBucket}
-          onPriceBucketChange={setPriceBucket}
-          isLoading={filtersLoading}
-          error={filtersError}
-          onReset={clearFilters}
-          onRetry={reloadFilters}
-        />
+        {!isCompactFiltersViewport ? (
+          <ProductFilters
+            categories={categories}
+            priceRanges={priceRanges}
+            activeCategories={activeCategories}
+            onToggleCategory={handleToggleCategory}
+            priceBucket={priceBucket}
+            onPriceBucketChange={setPriceBucket}
+            isLoading={filtersLoading}
+            error={filtersError}
+            onReset={clearFilters}
+            onRetry={reloadFilters}
+          />
+        ) : null}
 
         <div>
           <div className="mb-4 flex flex-wrap gap-2">
-            <span className="rounded-full border border-black/10 bg-white/70 px-3 py-1 text-[11px] text-ink-muted">
+            <span className="theme-pill rounded-full px-3 py-1 text-[11px]">
               {isLoading ? "Loading..." : `${resultCount} results`}
             </span>
             {search ? (
-              <span className="rounded-full border border-black/10 bg-white/70 px-3 py-1 text-[11px] text-ink-muted">
+              <span className="theme-pill rounded-full px-3 py-1 text-[11px]">
                 Search: {search}
               </span>
             ) : null}
@@ -281,6 +321,55 @@ function ProductCatalogContent({
           />
         </div>
       </div>
+
+      {isCompactFiltersViewport ? (
+        <div
+          className={`fixed inset-0 z-50 ${isFilterDrawerOpen ? "pointer-events-auto" : "pointer-events-none"}`}
+          aria-hidden={!isFilterDrawerOpen}
+        >
+          <div
+            className={`theme-overlay absolute inset-0 transition-opacity ${isFilterDrawerOpen ? "opacity-100" : "opacity-0"}`}
+            onClick={() => setIsFilterDrawerOpen(false)}
+          ></div>
+
+          <div
+            className={`theme-drawer absolute left-0 top-0 h-full w-[80%] max-w-105 transform overflow-hidden shadow-2xl backdrop-blur-xl transition-transform sm:w-[40%] ${isFilterDrawerOpen ? "translate-x-0" : "-translate-x-full"}`}
+          >
+            <div className="theme-divider flex items-center justify-between border-b px-5 py-4">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.35em] text-ink-muted">
+                  Filters
+                </p>
+                <p className="text-lg font-semibold">Refine products</p>
+              </div>
+              <Button
+                isIconOnly
+                variant="light"
+                radius="full"
+                aria-label="Close filters"
+                className="theme-action-soft"
+                onPress={() => setIsFilterDrawerOpen(false)}
+              >
+                ✕
+              </Button>
+            </div>
+
+            <ProductFilters
+              categories={categories}
+              priceRanges={priceRanges}
+              activeCategories={activeCategories}
+              onToggleCategory={handleToggleCategory}
+              priceBucket={priceBucket}
+              onPriceBucketChange={setPriceBucket}
+              isLoading={filtersLoading}
+              error={filtersError}
+              onReset={clearFilters}
+              onRetry={reloadFilters}
+              className="h-[calc(100%-81px)] overflow-y-auto rounded-none border-0 bg-transparent p-5 shadow-none backdrop-blur-none"
+            />
+          </div>
+        </div>
+      ) : null}
 
       <CartDrawer
         isOpen={isCartOpen}

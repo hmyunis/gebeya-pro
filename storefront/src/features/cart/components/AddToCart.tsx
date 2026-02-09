@@ -21,7 +21,7 @@ export default function AddToCart({ product }: { product: CartProduct }) {
             radius="full"
             variant="flat"
             aria-label="Decrease quantity"
-            className="border border-black/10 bg-white/80 text-[#12141a]"
+            className="theme-action-soft"
             onPress={() => decrementFromCart(product.id)}
           >
             −
@@ -35,7 +35,7 @@ export default function AddToCart({ product }: { product: CartProduct }) {
             radius="full"
             variant="flat"
             aria-label="Increase quantity"
-            className="border border-black/10 bg-white/80 text-[#12141a]"
+            className="theme-action-soft"
             onPress={() => addToCart(product)}
           >
             +
@@ -47,7 +47,7 @@ export default function AddToCart({ product }: { product: CartProduct }) {
           color="primary"
           radius="full"
           size="sm"
-          className="bg-[#12141a] text-white shadow-[0_14px_30px_-18px_rgba(18,20,26,0.7)] transition-transform duration-300 hover:-translate-y-0.5 hover:bg-[#1e2230]"
+          className="theme-cta shadow-[0_14px_30px_-18px_rgba(30,60,109,0.7)] transition-transform duration-300 hover:-translate-y-0.5"
           onPress={() => {
             addToCart(product);
             addToast({

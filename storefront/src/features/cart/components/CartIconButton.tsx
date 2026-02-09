@@ -30,7 +30,7 @@ export function CartIconButton({
         radius="full"
         aria-label="Cart"
         onPress={onPress}
-        className="bg-white/70 text-[#12141a] shadow-[0_12px_30px_-22px_rgba(16,19,25,0.7)]"
+        className="theme-action-soft"
       >
         <svg
           width="24"

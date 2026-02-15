@@ -12,7 +12,6 @@ import {
   ModalFooter,
   ModalHeader,
   addToast,
-  ScrollShadow,
 } from "@heroui/react";
 import { useStore } from "@nanostores/react";
 import { Copy } from "lucide-react";
@@ -69,6 +68,9 @@ export default function OrderModal({
     null
   );
   const [isReceiptPreviewOpen, setIsReceiptPreviewOpen] = useState(false);
+  const [selectedBankAccount, setSelectedBankAccount] = useState<BankAccount | null>(
+    null
+  );
   const bankAccountsQuery = useQuery({
     queryKey: ["bank-accounts", checkoutProductIds],
     queryFn: async ({ signal }) => {
@@ -96,6 +98,7 @@ export default function OrderModal({
       setReceiptFile(null);
       setReceiptPreviewUrl(null);
       setIsReceiptPreviewOpen(false);
+      setSelectedBankAccount(null);
     }
   }, [isOpen]);
 
@@ -304,86 +307,7 @@ export default function OrderModal({
 
             <div className="mt-5 flex items-center justify-between text-base font-semibold">
               <span>{t("common.total")}</span>
-              <span className="text-[color:var(--ink)]">{formatBirrLabel(total)}</span>
-            </div>
-
-            <div className="mt-6">
-              <div className="flex items-center justify-between">
-                <p className="text-[11px] uppercase tracking-[0.35em] text-ink-muted">
-                  {t("order.bankDetails")}
-                </p>
-              </div>
-
-              <div className="mt-3">
-                {isBankAccountsLoading ? (
-                  <p className="text-xs text-ink-muted">
-                    {t("order.loadingBanks")}
-                  </p>
-                ) : activeBankAccounts.length === 0 ? (
-                  <p className="text-xs text-ink-muted">
-                    {t("order.noBanks")}
-                  </p>
-                ) : (
-                  <ScrollShadow
-                    orientation="vertical"
-                    hideScrollBar
-                    size={32}
-                    offset={8}
-                    className="max-h-56 space-y-2 pr-1"
-                  >
-                    {activeBankAccounts.map((account) => (
-                      <div
-                        key={account.id}
-                        className="theme-card rounded-2xl px-4 py-3"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="theme-card-subtle h-10 w-10 overflow-hidden rounded-lg">
-                            {account.logoUrl ? (
-                              <img
-                                src={account.logoUrl}
-                                alt={account.bankName}
-                                className="h-full w-full object-cover"
-                              />
-                            ) : null}
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-sm font-semibold text-[color:var(--ink)]">
-                              {account.bankName}
-                            </p>
-                            <p className="text-[11px] text-ink-muted">
-                              {account.accountHolderName}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="mt-2 flex items-start justify-between gap-3">
-                          <div>
-                            <p className="text-sm font-semibold text-[color:var(--ink)]">
-                              {account.accountNumber}
-                            </p>
-                            <p className="text-[11px] text-ink-muted">
-                              {t("order.accountNumber")}
-                            </p>
-                          </div>
-                          <Button
-                            type="button"
-                            isIconOnly
-                            size="sm"
-                            radius="full"
-                            variant="light"
-                            aria-label={t("order.copyAccount")}
-                            className="theme-action-soft"
-                            onPress={() =>
-                              copyToClipboard(account.accountNumber)
-                            }
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </ScrollShadow>
-                )}
-              </div>
+              <span className="text-(--ink)">{formatBirrLabel(total)}</span>
             </div>
           </div>
 
@@ -417,6 +341,46 @@ export default function OrderModal({
                   />
 
                   <div className="space-y-2">
+                    <p className="text-[11px] uppercase tracking-[0.35em] text-ink-muted">
+                      {t("order.bankDetails")}
+                    </p>
+
+                    {isBankAccountsLoading ? (
+                      <p className="text-xs text-ink-muted">
+                        {t("order.loadingBanks")}
+                      </p>
+                    ) : activeBankAccounts.length === 0 ? (
+                      <p className="text-xs text-ink-muted">
+                        {t("order.noBanks")}
+                      </p>
+                    ) : (
+                      <div className="flex flex-wrap gap-3">
+                        {activeBankAccounts.map((account) => (
+                          <button
+                            key={account.id}
+                            type="button"
+                            onClick={() => setSelectedBankAccount(account)}
+                            className="theme-card-subtle flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl transition hover:opacity-90"
+                            aria-label={account.bankName}
+                          >
+                            {account.logoUrl ? (
+                              <img
+                                src={account.logoUrl}
+                                alt={account.bankName}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <span className="text-xs font-semibold text-(--ink)">
+                                {account.bankName.slice(0, 2).toUpperCase()}
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <p className="text-[11px] uppercase tracking-[0.35em] text-ink-muted">
                         {t("order.receiptUpload")}
@@ -436,7 +400,7 @@ export default function OrderModal({
                     {receiptFile ? (
                       <div className="theme-card-subtle flex items-center justify-between gap-3 rounded-2xl px-4 py-2">
                         <div className="min-w-0">
-                          <p className="text-sm font-semibold text-[color:var(--ink)] line-clamp-1">
+                          <p className="text-sm font-semibold text-(--ink) line-clamp-1">
                             {receiptFile.name}
                           </p>
                           <p className="text-[11px] text-ink-muted">
@@ -448,7 +412,7 @@ export default function OrderModal({
                             <button
                               type="button"
                               onClick={() => setIsReceiptPreviewOpen(true)}
-                              className="mt-2 flex items-center gap-2 text-[11px] font-semibold text-ink-muted underline underline-offset-4 hover:text-[color:var(--ink)]"
+                              className="mt-2 flex items-center gap-2 text-[11px] font-semibold text-ink-muted underline underline-offset-4 hover:text-(--ink)"
                             >
                               {t("common.viewPreview")}
                             </button>
@@ -502,6 +466,78 @@ export default function OrderModal({
           </Card>
         </div>
       </div>
+
+      <Modal
+        isOpen={Boolean(selectedBankAccount)}
+        onClose={() => setSelectedBankAccount(null)}
+        size="md"
+        scrollBehavior="inside"
+        classNames={{
+          wrapper: "!z-[120]",
+          backdrop: "!z-[120]",
+          base: "!z-[121]",
+        }}
+      >
+        <ModalContent>
+          <ModalHeader className="flex items-center gap-3">
+            <div className="theme-card-subtle h-10 w-10 overflow-hidden rounded-lg">
+              {selectedBankAccount?.logoUrl ? (
+                <img
+                  src={selectedBankAccount.logoUrl}
+                  alt={selectedBankAccount.bankName}
+                  className="h-full w-full object-cover"
+                />
+              ) : null}
+            </div>
+            <div className="min-w-0">
+              <p className="line-clamp-1 text-base font-semibold">
+                {selectedBankAccount?.bankName ?? t("order.bankDetails")}
+              </p>
+              <p className="text-[11px] text-ink-muted">
+                {selectedBankAccount?.accountHolderName}
+              </p>
+            </div>
+          </ModalHeader>
+          <ModalBody>
+            {selectedBankAccount ? (
+              <div className="theme-card rounded-2xl px-4 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-(--ink)">
+                      {selectedBankAccount.accountNumber}
+                    </p>
+                    <p className="text-[11px] text-ink-muted">
+                      {t("order.accountNumber")}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    isIconOnly
+                    size="sm"
+                    radius="full"
+                    variant="light"
+                    aria-label={t("order.copyAccount")}
+                    className="theme-action-soft"
+                    onPress={() =>
+                      copyToClipboard(selectedBankAccount.accountNumber)
+                    }
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+          </ModalBody>
+          <ModalFooter>
+            <Button
+              variant="light"
+              onPress={() => setSelectedBankAccount(null)}
+            >
+              {t("common.close")}
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
 
       <Modal
         isOpen={isReceiptPreviewOpen}

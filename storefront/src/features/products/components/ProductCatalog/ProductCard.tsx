@@ -22,6 +22,10 @@ export function ProductCard({
   const numericPrice =
     typeof product.price === "number" ? product.price : Number(product.price);
   const isFree = Number.isFinite(numericPrice) && numericPrice <= 0;
+  const descriptionText =
+    product.description && product.description.trim().length > 0
+      ? product.description
+      : t("product.noDescription");
 
   return (
     <div
@@ -58,21 +62,25 @@ export function ProductCard({
       </div>
 
       <div className="flex flex-1 flex-col gap-2 p-4">
+        {isFree ? (
+          <p className="text-base font-bold uppercase tracking-[0.16em] text-emerald-500 md:text-lg">
+            {t("product.free")}
+          </p>
+        ) : (
+          <p className="text-lg font-bold tracking-tight text-(--cta) md:text-xl">
+            {formatBirrLabel(product.price)}
+          </p>
+        )}
+
         <h3 className="text-sm font-semibold leading-snug line-clamp-1 md:text-base">
           {product.name}
         </h3>
-        <div className="mt-auto flex items-center justify-between">
-          {isFree ? (
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-green-600 md:text-base">
-              {t("product.free")}
-            </p>
-          ) : (
-            <p className="text-sm font-semibold text-[color:var(--ink)] md:text-base">
-              {formatBirrLabel(product.price)}
-            </p>
-          )}
-        </div>
-        <div className="mt-2" onClick={(event) => event.stopPropagation()}>
+
+        <p className="line-clamp-3 text-xs leading-relaxed text-ink-muted md:text-sm">
+          {descriptionText}
+        </p>
+
+        <div className="mt-auto pt-1" onClick={(event) => event.stopPropagation()}>
           <AddToCart product={product} />
         </div>
       </div>
